@@ -29,12 +29,16 @@ import java.io.FileDescriptor;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
+import java.nio.channels.Channel;
+import java.nio.channels.NetworkChannel;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 
 import jdk.internal.access.foreign.MemorySegmentProxy;
@@ -532,5 +536,56 @@ public class Util {
                + ") is not a multiple of the block size ("
                + alignment + ")");
         }
+    }
+
+    static boolean isUnixDomainSocket(NetworkChannel chan) {
+        if (! (chan instanceof SocketChannelImpl)) {
+	    return false;
+	}
+	SocketChannelImpl chan0 = (SocketChannelImpl)chan;
+        if (! chan0.isUnixSocket()) {
+	    return false;
+	}
+	return true;
+    }
+
+    public static void setSoSndChan(NetworkChannel carrier, Channel target)
+        throws IOException
+    {
+        if (! isUnixDomainSocket(carrier)) {
+           throw new UnsupportedOperationException("channel does not support this operation");
+        }
+        if (!(target instanceof SendableChannel)) {
+           throw new UnsupportedOperationException("target channel does not support this operation");
+        }
+        var schan = (SendableChannel)target;
+        var uchan = (SocketChannelImpl)carrier;
+        uchan.sendChannel(schan);
+    }
+
+    public static boolean getSoSndChanEnable(NetworkChannel chan) {
+        if (isUnixDomainSocket(chan)) {
+            var uchan = (SocketChannelImpl)chan;
+            return uchan.getSoSndChanEnable();
+        }
+        throw new UnsupportedOperationException("unsupported channel type");
+    }
+
+    public static void setSoSndChanEnable(NetworkChannel carrier, boolean enable)
+        throws IOException
+    {
+        if (! isUnixDomainSocket(carrier)) {
+           throw new UnsupportedOperationException("channel does not support this operation");
+        }
+        var uchan = (SocketChannelImpl)carrier;
+        uchan.setSoSndChanEnable(enable);
+    }
+
+    public static NetworkChannel getSoSndChan(NetworkChannel chan) {
+        if (isUnixDomainSocket(chan)) {
+            var uchan = (SocketChannelImpl)chan;
+            return (NetworkChannel)uchan.receivedChannel();
+        }
+        throw new UnsupportedOperationException("unsupported channel type");
     }
 }

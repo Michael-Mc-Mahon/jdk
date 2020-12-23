@@ -57,7 +57,7 @@ class LinuxSocketOptions extends PlatformSocketOptions {
         return keepAliveOptionsSupported0();
     }
 
-    boolean peerCredentialsSupported() {
+    boolean unixDomainExtOptionsSupported() {
         return true;
     }
 

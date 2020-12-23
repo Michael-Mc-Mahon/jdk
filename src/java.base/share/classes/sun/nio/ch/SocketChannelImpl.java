@@ -36,7 +36,9 @@ import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.SocketOption;
 import java.net.SocketTimeoutException;
+import java.net.StandardProtocolFamily;
 import java.net.StandardSocketOptions;
+import java.net.UnixDomainSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.AlreadyBoundException;
 import java.nio.channels.AlreadyConnectedException;
@@ -52,9 +54,15 @@ import java.nio.channels.spi.SelectorProvider;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Set;
 import java.util.Objects;
 import java.util.concurrent.locks.ReentrantLock;
+
+import jdk.internal.access.JavaIOFileDescriptorAccess;
+import jdk.internal.access.SharedSecrets;
+
 import static java.net.StandardProtocolFamily.INET;
 import static java.net.StandardProtocolFamily.INET6;
 import static java.net.StandardProtocolFamily.UNIX;
@@ -70,8 +78,19 @@ import sun.net.util.SocketExceptions;
 
 class SocketChannelImpl
     extends SocketChannel
-    implements SelChImpl
+    implements SelChImpl, SendableChannel
 {
+    private static final JavaIOFileDescriptorAccess fdAccess =
+            SharedSecrets.getJavaIOFileDescriptorAccess();
+
+    // snd channels waiting to be sent
+    private final Set<SendableChannel> sendQueue = new HashSet<>();
+
+    // received channels waiting to be accepted through get SO_SNDCHAN option
+    private final LinkedList<SendableChannel> receiveQueue = new LinkedList<>();
+
+    private boolean soSndChanEnable;
+
     // Used to make native read and write calls
     private static final NativeDispatcher nd = new SocketDispatcher();
 
@@ -274,6 +293,9 @@ class SocketChannelImpl
                     isReuseAddress = (Boolean) value;
                     return this;
                 }
+            } else if (Net.isByChannelOption(name)) {
+		Net.setOptionByChannel(this, name, value);
+		return this;
             }
 
             // no options that require special handling
@@ -303,7 +325,9 @@ class SocketChannelImpl
                     // SO_REUSEADDR emulated when using exclusive bind
                     return (T) Boolean.valueOf(isReuseAddress);
                 }
-            }
+            } else if (Net.isByChannelOption(name)) {
+		return (T) Net.getOptionByChannel(this, name);
+	    }
 
             // no options that require special handling
             return (T) Net.getSocketOption(fd, name);
@@ -414,11 +438,11 @@ class SocketChannelImpl
                 if (isInputClosed)
                     return IOStatus.EOF;
 
-                n = IOUtil.read(fd, buf, -1, nd);
+                n = readImpl(fd, buf, -1, nd);
                 if (blocking) {
                     while (IOStatus.okayToRetry(n) && isOpen()) {
                         park(Net.POLLIN);
-                        n = IOUtil.read(fd, buf, -1, nd);
+                        n = readImpl(fd, buf, -1, nd);
                     }
                 }
             } catch (ConnectionResetException e) {
@@ -434,6 +458,96 @@ class SocketChannelImpl
             readLock.unlock();
         }
     }
+
+    private int readImpl(FileDescriptor fd, ByteBuffer bb, long position,
+                      NativeDispatcher nd) throws IOException
+    {
+	if (isNetSocket() || !soSndChanEnable) {
+	    return IOUtil.read(fd, bb, position, false, -1, nd);
+	} else {
+	    assert isUnixSocket();
+	    return readImplUnix(fd, bb, -1, nd);
+	}
+    }
+
+    /**
+     * return the protocol family of remote if it is not null,
+     * or the protocol family of local if remote is null
+     */
+    private static ProtocolFamily inetFamilyOf(SocketAddress local, SocketAddress remote) {
+	assert local != null && remote != null;
+	assert local instanceof InetSocketAddress;
+	assert remote instanceof InetSocketAddress;
+
+	InetSocketAddress isa = (InetSocketAddress) (remote != null ? remote : local);;
+	ProtocolFamily family = isa.getAddress() instanceof Inet4Address ?
+	    StandardProtocolFamily.INET : StandardProtocolFamily.INET6;
+	return family;
+    }
+
+    int readImplUnix(FileDescriptor fd, ByteBuffer bb, long unused, NativeDispatcher nd)
+        throws IOException
+    {
+        int[] newfds = new int[MAX_SEND_FDS];
+        for (int i=0; i<newfds.length; i++)
+	    newfds[i] = -1;
+
+        int nbytes = IOUtil.recvmsg(fd, bb, (SocketDispatcher)nd, newfds);
+
+        int fd1 = newfds.length == 0 ? -1 : newfds[0];
+
+        for (int i=0; fd1 != -1; fd1 = newfds[++i]) {
+            FileDescriptor newfd = new FileDescriptor();
+            fdAccess.set(newfd, newfds[i]);
+            SocketAddress laddr = Net.localAddress(newfd);
+            SocketAddress raddr = Net.remoteAddress(newfd);
+            SendableChannel chan;
+
+            if (laddr instanceof UnixDomainSocketAddress) {
+                if (raddr == null) {
+                    chan = new ServerSocketChannelImpl(provider(), UNIX, newfd, true);
+                } else {
+                    chan = new SocketChannelImpl(provider(), UNIX, newfd, raddr);
+                }
+                addToChannelList(receiveQueue, chan);
+            } else if (laddr instanceof InetSocketAddress) {
+	    	ProtocolFamily family = inetFamilyOf(laddr, raddr);
+		InetSocketAddress isa = (InetSocketAddress) raddr;
+                if (raddr == null) {
+                    chan = new ServerSocketChannelImpl(provider(), family, newfd, true);
+                } else {
+                    chan = new SocketChannelImpl(provider(), family, newfd, isa);
+                }
+                addToChannelList(receiveQueue, chan);
+            }
+        }
+        return nbytes;
+    }
+
+    private static void addToChannelList(LinkedList<SendableChannel> list, SendableChannel c)
+        throws IOException
+    {
+        addToChannelList(list, c, Integer.MAX_VALUE);
+    }
+
+    private static void addToChannelList(LinkedList<SendableChannel> list, SendableChannel c, int maxlistlen)
+        throws IOException
+    {
+        synchronized (list) {
+            if (list.size() >= maxlistlen) {
+                throw new IOException("Too many entries in queue");
+            }
+            list.add(c);
+        }
+    }
+
+    private static SendableChannel pollChannelList(LinkedList<SendableChannel> list) {
+        synchronized (list) {
+            return list.poll();
+        }
+    }
+
+    // TODO: second read variant
 
     @Override
     public long read(ByteBuffer[] dsts, int offset, int length)
@@ -529,11 +643,11 @@ class SocketChannelImpl
             int n = 0;
             try {
                 beginWrite(blocking);
-                n = IOUtil.write(fd, buf, -1, nd);
+                n = writeImpl(fd, buf, -1, nd);
                 if (blocking) {
                     while (IOStatus.okayToRetry(n) && isOpen()) {
                         park(Net.POLLOUT);
-                        n = IOUtil.write(fd, buf, -1, nd);
+                        n = writeImpl(fd, buf, -1, nd);
                     }
                 }
             } finally {
@@ -546,6 +660,53 @@ class SocketChannelImpl
             writeLock.unlock();
         }
     }
+
+    private int writeImpl(FileDescriptor fd, ByteBuffer src,
+ 			  long position, NativeDispatcher nd) throws IOException
+    {
+    	if (isNetSocket()) {
+	    return IOUtil.write(fd, src, position, nd);
+	} else {
+	    assert isUnixSocket();
+	    return writeImplUnix(fd, src, -1, nd);
+	}
+    }
+
+    public int writeImplUnix(FileDescriptor fd, ByteBuffer src, long unused,
+                         NativeDispatcher nd)
+        throws IOException
+    {
+        FileDescriptor[] sendfds = null;
+        SendableChannel[] chans = {};
+        synchronized (sendQueue) {
+            if (!sendQueue.isEmpty()) {
+                int l = sendQueue.size();
+                sendfds = new FileDescriptor[l];
+                chans = new SendableChannel[l];
+                int i=0;
+                for (SendableChannel sendee : sendQueue) {
+                    if (!sendee.isOpen()) {
+                        throw new IOException("Target channel for send is closed");
+                    }
+                    if (sendee.isRegistered()) {
+                        throw new IOException("Target channel for send is registered with selector");
+                    }
+                    sendfds[i] = sendee.getFD();
+                    chans[i] = sendee;
+                    i++;
+                };
+                sendQueue.clear();
+            }
+        }
+        int nbytes = IOUtil.sendmsg(fd, src, (SocketDispatcher)nd, sendfds);
+        for (SendableChannel chan : chans) {
+            try {chan.close(); } catch (IOException e) {}
+        }
+        return nbytes;
+    }
+
+
+    // TODO: implement multi version of write
 
     @Override
     public long write(ByteBuffer[] srcs, int offset, int length)
@@ -1066,17 +1227,58 @@ class SocketChannelImpl
         }
     }
 
+    SendableChannel receivedChannel() {
+        return pollChannelList(receiveQueue);
+    }
+
+    private static final int MAX_SEND_FDS = SocketDispatcher.maxsendfds();
+
+    void sendChannel(SendableChannel target) throws IOException {
+        writeLock.lock();
+        try {
+            synchronized (sendQueue) {
+                if (sendQueue.contains(target)) {
+                    throw new IOException("channel already on send queue");
+                }
+                if (sendQueue.size() >= MAX_SEND_FDS) {
+                    throw new IOException("send queue is full");
+                }
+                sendQueue.add(target);
+            }
+        } finally {
+            writeLock.unlock();
+        }
+    }
+
     /**
      * Invoked by implCloseChannel to close the channel.
      */
     @Override
     protected void implCloseSelectableChannel() throws IOException {
         assert !isOpen();
+
+        for (SendableChannel c : sendQueue) {
+            try {c.close(); } catch (IOException e) {}
+        }
+        for (SendableChannel c : receiveQueue) {
+            try {c.close(); } catch (IOException e) {}
+        }
+        sendQueue.clear();
+        receiveQueue.clear();
+
         if (isBlocking()) {
             implCloseBlockingMode();
         } else {
             implCloseNonBlockingMode();
         }
+    }
+
+    synchronized boolean getSoSndChanEnable() {
+        return soSndChanEnable;
+    }
+
+    synchronized void setSoSndChanEnable(boolean enable) {
+        soSndChanEnable = enable;
     }
 
     @Override
