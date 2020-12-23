@@ -25,6 +25,7 @@
 
 package jdk.javadoc.internal.doclets.formats.html;
 
+import com.sun.source.doctree.DeprecatedTree;
 import jdk.javadoc.internal.doclets.formats.html.markup.Table;
 import jdk.javadoc.internal.doclets.formats.html.markup.TableHeader;
 
@@ -94,6 +95,8 @@ public class DeprecatedListWriter extends SubWriterHolderWriter {
                 return "enum.constant";
             case ANNOTATION_TYPE_MEMBER:
                 return "annotation.type.member";
+            case RECORD_CLASS:
+                return "record.class";
             default:
                 throw new AssertionError("unknown kind: " + kind);
         }
@@ -119,6 +122,8 @@ public class DeprecatedListWriter extends SubWriterHolderWriter {
                 return "doclet.Errors";
             case ANNOTATION_TYPE:
                 return "doclet.Annotation_Types";
+            case RECORD_CLASS:
+                return "doclet.RecordClasses";
             case FIELD:
                 return "doclet.Fields";
             case METHOD:
@@ -154,6 +159,8 @@ public class DeprecatedListWriter extends SubWriterHolderWriter {
                 return "doclet.errors";
             case ANNOTATION_TYPE:
                 return "doclet.annotation_types";
+            case RECORD_CLASS:
+                return "doclet.record_classes";
             case FIELD:
                 return "doclet.fields";
             case METHOD:
@@ -189,6 +196,8 @@ public class DeprecatedListWriter extends SubWriterHolderWriter {
                 return "doclet.Errors";
             case ANNOTATION_TYPE:
                 return "doclet.AnnotationType";
+            case RECORD_CLASS:
+                return "doclet.Record";
             case FIELD:
                 return "doclet.Field";
             case METHOD:
@@ -206,8 +215,6 @@ public class DeprecatedListWriter extends SubWriterHolderWriter {
 
     private EnumMap<DeprElementKind, AbstractMemberWriter> writerMap;
 
-    private final Navigation navBar;
-
     /**
      * Constructor.
      *
@@ -217,7 +224,6 @@ public class DeprecatedListWriter extends SubWriterHolderWriter {
 
     public DeprecatedListWriter(HtmlConfiguration configuration, DocPath filename) {
         super(configuration, filename);
-        this.navBar = new Navigation(null, configuration, PageMode.DEPRECATED, path);
         NestedClassWriterImpl classW = new NestedClassWriterImpl(this);
         writerMap = new EnumMap<>(DeprElementKind.class);
         for (DeprElementKind kind : DeprElementKind.values()) {
@@ -231,6 +237,7 @@ public class DeprecatedListWriter extends SubWriterHolderWriter {
                 case EXCEPTION:
                 case ERROR:
                 case ANNOTATION_TYPE:
+                case RECORD_CLASS:
                     writerMap.put(kind, classW);
                     break;
                 case FIELD:
@@ -294,11 +301,7 @@ public class DeprecatedListWriter extends SubWriterHolderWriter {
             }
         }
         bodyContents.addMainContent(content);
-        HtmlTree htmlTree = HtmlTree.FOOTER();
-        navBar.setUserFooter(getUserHeaderFooter(false));
-        htmlTree.add(navBar.getContent(Navigation.Position.BOTTOM));
-        addBottom(htmlTree);
-        bodyContents.setFooter(htmlTree);
+        bodyContents.setFooter(getFooter());
         String description = "deprecated elements";
         body.add(bodyContents);
         printHtmlDocument(null, description, body);
@@ -355,11 +358,7 @@ public class DeprecatedListWriter extends SubWriterHolderWriter {
     public HtmlTree getHeader() {
         String title = resources.getText("doclet.Window_Deprecated_List");
         HtmlTree bodyTree = getBody(getWindowTitle(title));
-        Content headerContent = new ContentBuilder();
-        addTop(headerContent);
-        navBar.setUserHeader(getUserHeaderFooter(true));
-        headerContent.add(navBar.getContent(Navigation.Position.TOP));
-        bodyContents.setHeader(headerContent);
+        bodyContents.setHeader(getHeader(PageMode.DEPRECATED));
         return bodyTree;
     }
 
@@ -397,7 +396,7 @@ public class DeprecatedListWriter extends SubWriterHolderWriter {
                         link = getDeprecatedLink(e);
                 }
                 Content desc = new ContentBuilder();
-                List<? extends DocTree> tags = utils.getDeprecatedTrees(e);
+                List<? extends DeprecatedTree> tags = utils.getDeprecatedTrees(e);
                 if (!tags.isEmpty()) {
                     addInlineDeprecatedComment(e, tags.get(0), desc);
                 } else {
@@ -417,6 +416,7 @@ public class DeprecatedListWriter extends SubWriterHolderWriter {
             case CLASS:
             case ENUM:
             case ANNOTATION_TYPE:
+            case RECORD:
                 writer = new NestedClassWriterImpl(this);
                 break;
             case FIELD:
