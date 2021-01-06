@@ -540,13 +540,13 @@ public class Util {
 
     static boolean isUnixDomainSocket(NetworkChannel chan) {
         if (! (chan instanceof SocketChannelImpl)) {
-	    return false;
-	}
-	SocketChannelImpl chan0 = (SocketChannelImpl)chan;
+            return false;
+        }
+        SocketChannelImpl chan0 = (SocketChannelImpl)chan;
         if (! chan0.isUnixSocket()) {
-	    return false;
-	}
-	return true;
+            return false;
+        }
+        return true;
     }
 
     public static void setSoSndChan(NetworkChannel carrier, Channel target)

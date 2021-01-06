@@ -36,6 +36,8 @@ import java.io.IOException;
 class SocketDispatcher extends NativeDispatcher {
     SocketDispatcher() { }
 
+    static final int max_send_fds = maxsendfds0();
+
     /**
      * Reads up to len bytes from a socket with special handling for "connection
      * reset".
@@ -87,7 +89,7 @@ class SocketDispatcher extends NativeDispatcher {
     }
 
     static int maxsendfds() {
-        return maxsendfds0();
+        return max_send_fds;
     }
 
     // -- Native methods --

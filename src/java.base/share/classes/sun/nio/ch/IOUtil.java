@@ -64,7 +64,7 @@ public class IOUtil {
         } else {
             bb = Util.getTemporaryDirectBuffer(rem);
         }
-	return bb;
+        return bb;
     }
 
     static int write(FileDescriptor fd, ByteBuffer src, long position,
@@ -295,7 +295,7 @@ public class IOUtil {
         } else {
             bb = Util.getTemporaryDirectBuffer(rem);
         }
-	return bb;
+        return bb;
     }
 
     static int read(FileDescriptor fd, ByteBuffer dst, long position,
@@ -306,7 +306,7 @@ public class IOUtil {
             throw new IllegalArgumentException("Read-only buffer");
         if (dst instanceof DirectBuffer)
             return readIntoNativeBuffer(fd, dst, position, directIO, alignment, nd);
-	ByteBuffer bb = getNativeReadBuffer(dst, directIO, alignment);
+        ByteBuffer bb = getNativeReadBuffer(dst, directIO, alignment);
 
         try {
             int n = readIntoNativeBuffer(fd, bb, position, directIO, alignment,nd);

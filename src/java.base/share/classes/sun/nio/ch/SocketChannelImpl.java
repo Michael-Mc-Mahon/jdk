@@ -60,9 +60,6 @@ import java.util.Set;
 import java.util.Objects;
 import java.util.concurrent.locks.ReentrantLock;
 
-import jdk.internal.access.JavaIOFileDescriptorAccess;
-import jdk.internal.access.SharedSecrets;
-
 import static java.net.StandardProtocolFamily.INET;
 import static java.net.StandardProtocolFamily.INET6;
 import static java.net.StandardProtocolFamily.UNIX;
@@ -80,10 +77,6 @@ class SocketChannelImpl
     extends SocketChannel
     implements SelChImpl, SendableChannel
 {
-    private static final JavaIOFileDescriptorAccess fdAccess =
-            SharedSecrets.getJavaIOFileDescriptorAccess();
-
-    // snd channels waiting to be sent
     private final Set<SendableChannel> sendQueue = new HashSet<>();
 
     // received channels waiting to be accepted through get SO_SNDCHAN option
@@ -294,8 +287,8 @@ class SocketChannelImpl
                     return this;
                 }
             } else if (Net.isByChannelOption(name)) {
-		Net.setOptionByChannel(this, name, value);
-		return this;
+                Net.setOptionByChannel(this, name, value);
+                return this;
             }
 
             // no options that require special handling
@@ -326,8 +319,8 @@ class SocketChannelImpl
                     return (T) Boolean.valueOf(isReuseAddress);
                 }
             } else if (Net.isByChannelOption(name)) {
-		return (T) Net.getOptionByChannel(this, name);
-	    }
+                return (T) Net.getOptionByChannel(this, name);
+            }
 
             // no options that require special handling
             return (T) Net.getSocketOption(fd, name);
@@ -462,88 +455,11 @@ class SocketChannelImpl
     private int readImpl(FileDescriptor fd, ByteBuffer bb, long position,
                       NativeDispatcher nd) throws IOException
     {
-	if (isNetSocket() || !soSndChanEnable) {
-	    return IOUtil.read(fd, bb, position, false, -1, nd);
-	} else {
-	    assert isUnixSocket();
-	    return readImplUnix(fd, bb, -1, nd);
-	}
-    }
-
-    /**
-     * return the protocol family of remote if it is not null,
-     * or the protocol family of local if remote is null
-     */
-    private static ProtocolFamily inetFamilyOf(SocketAddress local, SocketAddress remote) {
-	assert local != null && remote != null;
-	assert local instanceof InetSocketAddress;
-	assert remote instanceof InetSocketAddress;
-
-	InetSocketAddress isa = (InetSocketAddress) (remote != null ? remote : local);;
-	ProtocolFamily family = isa.getAddress() instanceof Inet4Address ?
-	    StandardProtocolFamily.INET : StandardProtocolFamily.INET6;
-	return family;
-    }
-
-    int readImplUnix(FileDescriptor fd, ByteBuffer bb, long unused, NativeDispatcher nd)
-        throws IOException
-    {
-        int[] newfds = new int[MAX_SEND_FDS];
-        for (int i=0; i<newfds.length; i++)
-	    newfds[i] = -1;
-
-        int nbytes = IOUtil.recvmsg(fd, bb, (SocketDispatcher)nd, newfds);
-
-        int fd1 = newfds.length == 0 ? -1 : newfds[0];
-
-        for (int i=0; fd1 != -1; fd1 = newfds[++i]) {
-            FileDescriptor newfd = new FileDescriptor();
-            fdAccess.set(newfd, newfds[i]);
-            SocketAddress laddr = Net.localAddress(newfd);
-            SocketAddress raddr = Net.remoteAddress(newfd);
-            SendableChannel chan;
-
-            if (laddr instanceof UnixDomainSocketAddress) {
-                if (raddr == null) {
-                    chan = new ServerSocketChannelImpl(provider(), UNIX, newfd, true);
-                } else {
-                    chan = new SocketChannelImpl(provider(), UNIX, newfd, raddr);
-                }
-                addToChannelList(receiveQueue, chan);
-            } else if (laddr instanceof InetSocketAddress) {
-	    	ProtocolFamily family = inetFamilyOf(laddr, raddr);
-		InetSocketAddress isa = (InetSocketAddress) raddr;
-                if (raddr == null) {
-                    chan = new ServerSocketChannelImpl(provider(), family, newfd, true);
-                } else {
-                    chan = new SocketChannelImpl(provider(), family, newfd, isa);
-                }
-                addToChannelList(receiveQueue, chan);
-            }
-        }
-        return nbytes;
-    }
-
-    private static void addToChannelList(LinkedList<SendableChannel> list, SendableChannel c)
-        throws IOException
-    {
-        addToChannelList(list, c, Integer.MAX_VALUE);
-    }
-
-    private static void addToChannelList(LinkedList<SendableChannel> list, SendableChannel c, int maxlistlen)
-        throws IOException
-    {
-        synchronized (list) {
-            if (list.size() >= maxlistlen) {
-                throw new IOException("Too many entries in queue");
-            }
-            list.add(c);
-        }
-    }
-
-    private static SendableChannel pollChannelList(LinkedList<SendableChannel> list) {
-        synchronized (list) {
-            return list.poll();
+        if (isNetSocket() || !soSndChanEnable) {
+            return IOUtil.read(fd, bb, position, false, -1, nd);
+        } else {
+            assert isUnixSocket();
+            return UnixDomainSockets.read(provider(), fd, bb, receiveQueue, nd);
         }
     }
 
@@ -662,49 +578,15 @@ class SocketChannelImpl
     }
 
     private int writeImpl(FileDescriptor fd, ByteBuffer src,
- 			  long position, NativeDispatcher nd) throws IOException
+                          long position, NativeDispatcher nd) throws IOException
     {
-    	if (isNetSocket()) {
-	    return IOUtil.write(fd, src, position, nd);
-	} else {
-	    assert isUnixSocket();
-	    return writeImplUnix(fd, src, -1, nd);
-	}
-    }
-
-    public int writeImplUnix(FileDescriptor fd, ByteBuffer src, long unused,
-                         NativeDispatcher nd)
-        throws IOException
-    {
-        FileDescriptor[] sendfds = null;
-        SendableChannel[] chans = {};
-        synchronized (sendQueue) {
-            if (!sendQueue.isEmpty()) {
-                int l = sendQueue.size();
-                sendfds = new FileDescriptor[l];
-                chans = new SendableChannel[l];
-                int i=0;
-                for (SendableChannel sendee : sendQueue) {
-                    if (!sendee.isOpen()) {
-                        throw new IOException("Target channel for send is closed");
-                    }
-                    if (sendee.isRegistered()) {
-                        throw new IOException("Target channel for send is registered with selector");
-                    }
-                    sendfds[i] = sendee.getFD();
-                    chans[i] = sendee;
-                    i++;
-                };
-                sendQueue.clear();
-            }
+        if (isNetSocket()) {
+            return IOUtil.write(fd, src, position, nd);
+        } else {
+            assert isUnixSocket();
+            return UnixDomainSockets.write(fd, src, sendQueue, nd);
         }
-        int nbytes = IOUtil.sendmsg(fd, src, (SocketDispatcher)nd, sendfds);
-        for (SendableChannel chan : chans) {
-            try {chan.close(); } catch (IOException e) {}
-        }
-        return nbytes;
     }
-
 
     // TODO: implement multi version of write
 
@@ -1228,7 +1110,9 @@ class SocketChannelImpl
     }
 
     SendableChannel receivedChannel() {
-        return pollChannelList(receiveQueue);
+        synchronized (receiveQueue) {
+            return receiveQueue.poll();
+        }
     }
 
     private static final int MAX_SEND_FDS = SocketDispatcher.maxsendfds();

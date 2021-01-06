@@ -205,9 +205,9 @@ public final class ExtendedSocketOptions {
             ("SO_PEERCRED", UnixDomainPrincipal.class);
 
     /**
-     * Send a {@link SocketChannel} or {@link ServerSocketChannel} through a <i>Unix Domain</i>
-     * {@link SocketChannel} or obtain such a channel received through a <i>Unix Domain</i>
-     * {@code SocketChannel}.
+     * Send a {@link SocketChannel} or {@link ServerSocketChannel} through a {@link SocketChannel}
+     * to a <i>Unix Domain</i> socket (option set) or obtain such a channel received through a
+     * socket to a <i>Unix Domain</i> {@code SocketChannel} (option get).
      * <p>
      * This socket option allows channels to be sent and received between
      * processes on the same system alongside regular data. Both <i>Internet Protocol</I>
@@ -215,20 +215,21 @@ public final class ExtendedSocketOptions {
      * Other {@link Channel} types are not supported at this time.
      *
      * <p> Setting the option causes the supplied channel to be added to a send queue
-     * associated with this <i>Unix Domain</i> {@code SocketChannel} such that when the next write occurs
-     * on this channel, an attempt is made to send all channels in the queue, in an ancillary
-     * control message together with the data. Setting this option synchronizes with
-     * channel writes to make ordering predictable. No change in state of the given
-     * channel occurs until the write happens, at which time the channel is closed.
+     * associated with this {@code SocketChannel} to a <i>Unix Domain</i> socket, such that
+     * when the next write occurs on this channel, an attempt is made to send all channels
+     * in the queue, in an ancillary control message together with the data. Setting this
+     * option synchronizes with channel writes to make ordering predictable. No change in state
+     * of the given channel occurs until the write happens, at which time the channel is closed.
      * The channel's socket remains open and usable on the receiving side.
-     * The send queue has an implementation specific maximum length and
-     * it is an error to register more than this number of channels for sending before calling
+     * The send queue has an implementation specific maximum length (greater than or equal to one)
+     * and it is an error to register more than this number of channels for sending before calling
      * write. It is inadvisable to perform any I/O on a channel
      * after registering it to be sent with this option. In particular, the
      * send will fail if a channel is already closed at the time it is to be sent
      * or if it has been registered with a {@link Selector}.
      *
-     * <p> Receiving channels involves a similar procedure in reverse. As data is read
+     * <p> Receiving channels involves a similar procedure in reverse. The {@link #SO_RCVCHAN_ENABLE}
+     * option must be enabled on the receiving side, prior to the channel being sent. As data is read
      * through the {@link SocketChannel} read methods, if any associated ancillary control messages
      * contain a channel, they are added to a receive queue associated with this channel.
      * Getting this socket option then removes the first channel from the receive queue
@@ -243,7 +244,7 @@ public final class ExtendedSocketOptions {
      * or notification of OP_READ, if non-blocking.
      *
      * <p> Closing a channel while channels are still in its send or receive queues causes all
-     * channels in both queues to be closed. If a <i>Unix Domain</i> channel is sent
+     * channels in both queues to be closed. If a channel to a <i>Unix Domain</i> socket is sent
      * using this mechanism, and has channels in its own send or receive queues, these
      * channels are closed before the channel is sent.
      */
