@@ -229,19 +229,19 @@ public final class ExtendedSocketOptions {
      * or if it has been registered with a {@link Selector}.
      *
      * <p> Receiving channels involves a similar procedure in reverse. The {@link #SO_RCVCHAN_ENABLE}
-     * option must be enabled on the receiving side, prior to the channel being sent. As data is read
-     * through the {@link SocketChannel} read methods, if any associated ancillary control messages
-     * contain a channel, they are added to a receive queue associated with this channel.
+     * option must be enabled on the receiving side, in order to receive the channel. As data is read
+     * through the {@link SocketChannel} read methods, and if any associated ancillary control messages
+     * contain channels, they are added to a receive queue associated with this channel.
      * Getting this socket option then removes the first channel from the receive queue
      * and returns it. If the receive queue is empty when getOption is called, {@code null}
      * is returned.
      *
-     * <p> Note, there is no way to detect if a particular read has received
+     * <p> Note, there is no general way to detect if a particular read has received
      * a channel. However, once the data that was written when sending a channel has been
      * read on the receiving side, then the associated channel is guaranteed to be
      * available to the receiver. The sender and receiver can co-ordinate by using this fact, or
      * alternatively the receiver can poll for a received channel after each read
-     * or notification of OP_READ, if non-blocking.
+     * or notification of {@code OP_READ}, if non-blocking.
      *
      * <p> Closing a channel while channels are still in its send or receive queues causes all
      * channels in both queues to be closed. If a channel to a <i>Unix Domain</i> socket is sent
@@ -253,7 +253,8 @@ public final class ExtendedSocketOptions {
                 ("SO_SNDCHAN", Channel.class);
 
     /**
-     * Enable reception of channels through the {@link #SO_SNDCHAN} option. If disabled,
+     * Enable reception of channels through a {@link SocketChannel} to a Unix Domain socket.
+     * Such channels can be sent using the {@link #SO_SNDCHAN} option. If disabled,
      * any channels received on a <i>Unix Domain</i> {@code SocketChannel} are automatically
      * closed without being made available through the {@code SO_SNDCHAN} option.
      * This option is disabled by default and needs to be set before any data
