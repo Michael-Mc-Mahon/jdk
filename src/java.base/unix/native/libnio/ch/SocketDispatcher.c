@@ -109,7 +109,7 @@ Java_sun_nio_ch_SocketDispatcher_recvmsg0(JNIEnv *env, jclass clazz,
         cmsg = CMSG_FIRSTHDR(&msg);
         if (cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS) {
             jint *newfds;
-            jint nfds = (msg.msg_controllen - sizeof(struct cmsghdr))/sizeof(int);
+            jint nfds = (cmsg->cmsg_len - sizeof(struct cmsghdr))/sizeof(int);
             if (fdarray == NULL || (*env)->GetArrayLength(env, fdarray) == 0) {
                 // close them
                 int *fdptr = (int *)CMSG_DATA(cmsg);
@@ -142,15 +142,9 @@ Java_sun_nio_ch_SocketDispatcher_sendmsg0(JNIEnv *env, jclass clazz,
     void *buf = (void *)jlong_to_ptr(address);
     struct msghdr msg;
     struct iovec iov[1];
-    struct cmsghdr *cmsg = NULL;
-    union {
-        char cmsgdata[CMSG_SPACE(sizeof(int) * MAX_SEND_FDS)];
-        struct cmsghdr align;
-    } u;
     int ret;
 
     memset(&msg, 0, sizeof(msg));
-    memset(u.cmsgdata, 0, sizeof(u.cmsgdata));
 
     iov[0].iov_base = buf;
     iov[0].iov_len = len;
@@ -161,7 +155,14 @@ Java_sun_nio_ch_SocketDispatcher_sendmsg0(JNIEnv *env, jclass clazz,
     if (fdarray != NULL) {
         jsize arraylen = (*env)->GetArrayLength(env, fdarray);
         int fds[arraylen];
+        struct cmsghdr *cmsg = NULL;
+        union {
+            //char cmsgdata[CMSG_SPACE(sizeof(int) * arraylen)];
+            char cmsgdata[CMSG_SPACE(sizeof(int) * MAX_SEND_FDS)];
+            struct cmsghdr alignl;
+        } u;
 
+        memset(u.cmsgdata, 0, sizeof(u.cmsgdata));
         for (int i=0; i<arraylen; i++) {
             jobject fdsend = (*env)->GetObjectArrayElement(env, fdarray, i);
             fds[i] = fdval(env, fdsend);
