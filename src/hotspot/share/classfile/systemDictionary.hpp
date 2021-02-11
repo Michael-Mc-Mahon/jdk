@@ -25,7 +25,6 @@
 #ifndef SHARE_CLASSFILE_SYSTEMDICTIONARY_HPP
 #define SHARE_CLASSFILE_SYSTEMDICTIONARY_HPP
 
-#include "classfile/vmClasses.hpp"
 #include "oops/oopHandle.hpp"
 #include "runtime/handles.hpp"
 #include "runtime/signature.hpp"
@@ -86,10 +85,7 @@ class EventClassLoad;
 class Symbol;
 class TableStatistics;
 
-// TMP: subclass from vmClasses so that we can still access the VM classes like
-// SystemDictionary::Object_klass(). This will be fixed when we replace all SystemDictionary::*_klass()
-// calls with vmClasses::*_klass().
-class SystemDictionary : public vmClasses {
+class SystemDictionary : AllStatic {
   friend class BootstrapInfo;
   friend class vmClasses;
   friend class VMStructs;
@@ -356,9 +352,6 @@ private:
                                               Handle class_loader,
                                               InstanceKlass* k, TRAPS);
   static InstanceKlass* load_instance_class(Symbol* class_name, Handle class_loader, TRAPS);
-  static bool is_parallelDefine(Handle class_loader);
-  static Handle compute_loader_lock_object(Thread* thread, Handle class_loader);
-  static void check_loader_lock_contention(Thread* thread, Handle loader_lock);
 
   static bool is_shared_class_visible(Symbol* class_name, InstanceKlass* ik,
                                       PackageEntry* pkg_entry,
@@ -394,7 +387,7 @@ protected:
   static InstanceKlass* load_shared_boot_class(Symbol* class_name,
                                                PackageEntry* pkg_entry,
                                                TRAPS);
-  static bool is_parallelCapable(Handle class_loader);
+  static Handle compute_loader_lock_object(Handle class_loader);
   static InstanceKlass* find_or_define_instance_class(Symbol* class_name,
                                                       Handle class_loader,
                                                       InstanceKlass* k, TRAPS);
