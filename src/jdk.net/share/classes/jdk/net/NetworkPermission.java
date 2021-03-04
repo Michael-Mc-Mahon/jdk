@@ -52,9 +52,9 @@ import java.security.BasicPermission;
  *       to other processes over a <i>Unix Domain</i> SocketChannel</td>
  * </tr>
  * <tr>
- *   <th scope="row">getOption.SO_SNDCHAN</th>
- *   <td>retrieve the {@link ExtendedSocketOptions#SO_FLOW_SLA SO_FLOW_SLA}
- *       setting from any socket that supports the option</td>
+ *   <th scope="row">setOption.SO_RCVCHAN_ENABLE</th>
+ *   <td>set the {@link ExtendedSocketOptions#SO_RCVCHAN_ENABLE SO_RCVCHAN_ENABLE} option
+ *       on any socket that supports it</td>
  *   <td>allows caller to receive SocketChannels and ServerSocketChannels
  *       from other processes over a <i>Unix Domain</i> SocketChannel</td>
  * </tr>
