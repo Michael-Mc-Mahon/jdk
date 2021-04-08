@@ -2184,13 +2184,13 @@ public:
     if (value)
       fmov_imm(Vn, value, 0b00);
     else
-      fmovs(Vn, zr);
+      movi(Vn, T2S, 0);
   }
   void fmovd(FloatRegister Vn, double value) {
     if (value)
       fmov_imm(Vn, value, 0b01);
     else
-      fmovd(Vn, zr);
+      movi(Vn, T1D, 0);
   }
 
    // Floating-point rounding
@@ -3060,6 +3060,7 @@ public:
   INSN(sve_and, 0b00);
   INSN(sve_eor, 0b10);
   INSN(sve_orr, 0b01);
+  INSN(sve_bic, 0b11);
 #undef INSN
 
 // SVE shift immediate - unpredicated
