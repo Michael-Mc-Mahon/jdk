@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2002, 2019, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2012, 2013 SAP SE. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,12 +19,22 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- *
  */
 
-#ifndef CPU_PPC_DEPCHECKER_PPC_HPP
-#define CPU_PPC_DEPCHECKER_PPC_HPP
+import jdk.test.lib.apps.LingeredApp;
 
-// Nothing to do on ppc64
+public class JCmdTestLingeredApp extends LingeredApp {
+    public JCmdTestLingeredApp() {
+        // Do not use default test.class.path in class path.
+        setUseDefaultClasspath(false);
+    }
 
-#endif // CPU_PPC_DEPCHECKER_PPC_HPP
+    public static void main(String args[]) {
+        try {
+            Class.forName("Hello");
+        } catch (Exception e) {
+            System.out.print("Could not load Hello "+ e);
+        }
+        LingeredApp.main(args);
+    }
+}
