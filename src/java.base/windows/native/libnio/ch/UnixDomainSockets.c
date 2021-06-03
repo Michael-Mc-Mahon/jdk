@@ -23,6 +23,10 @@
  * questions.
  */
 
+#ifndef UNICODE
+#define UNICODE 1
+#endif
+
 #include <windows.h>
 #include <winsock2.h>
 
@@ -37,6 +41,9 @@
 #include "java_net_InetAddress.h"
 #include "sun_nio_ch_Net.h"
 #include "sun_nio_ch_PollArrayWrapper.h"
+
+/* The winsock provider ID of the Microsoft AF_UNIX implementation */
+static GUID MS_PROVIDER_ID  = {0xA00943D9,0x9C2E,0x4633,{0x9B,0x59,0,0x57,0xA3,0x16,0x09,0x94}};
 
 jbyteArray sockaddrToUnixAddressBytes(JNIEnv *env, struct sockaddr_un *sa, socklen_t len)
 {
@@ -84,15 +91,59 @@ jint unixSocketAddressToSockaddr(JNIEnv *env, jbyteArray addr, struct sockaddr_u
     return ret;
 }
 
+static int cmpGuid(GUID *g1, GUID *g2) {
+    if (g1->Data1 != g2->Data1)
+        return 0;
+    if (g1->Data2 != g2->Data2)
+        return 0;
+    if (g1->Data3 != g2->Data3)
+        return 0;
+    return !memcmp(g1->Data4, g2->Data4, 8);
+}
+
 JNIEXPORT jboolean JNICALL
 Java_sun_nio_ch_UnixDomainSockets_socketSupported(JNIEnv *env, jclass cl)
 {
+    WSAPROTOCOL_INFO info[5];
+    LPWSAPROTOCOL_INFO infoPtr = &info[0];
+    DWORD len = sizeof(info);
+    jboolean retCode;
+
     SOCKET s = socket(PF_UNIX, SOCK_STREAM, 0);
     if (s == INVALID_SOCKET) {
         return JNI_FALSE;
     }
     closesocket(s);
-    return JNI_TRUE;
+    /*
+     * Check the Winsock service provider for AF_UNIX is the Microsoft one
+     */
+    int result = WSAEnumProtocols(0, infoPtr, &len);
+    if (result == SOCKET_ERROR) {
+        if (GetLastError() == WSAENOBUFS) {
+            infoPtr = (LPWSAPROTOCOL_INFO)malloc(len);
+            result = WSAEnumProtocols(0, infoPtr, &len);
+            if (result == SOCKET_ERROR) {
+                free(infoPtr);
+                return JNI_FALSE;
+            }
+        } else {
+            return JNI_FALSE;
+        }
+    }
+    retCode = JNI_FALSE;
+    for (int i=0; i<result;  i++) {
+        if (infoPtr[i].iAddressFamily != AF_UNIX)
+            continue;
+        GUID g = infoPtr[i].ProviderId;
+        if (cmpGuid(&g, &MS_PROVIDER_ID)) {
+            retCode = JNI_TRUE;
+            break;
+        }
+    }
+    if (infoPtr != &info[0]) {
+        free(infoPtr);
+    }
+    return retCode;
 }
 
 JNIEXPORT jint JNICALL
