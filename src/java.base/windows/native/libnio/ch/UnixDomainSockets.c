@@ -106,7 +106,7 @@ static WSAPROTOCOL_INFO provider;
 JNIEXPORT jboolean JNICALL
 Java_sun_nio_ch_UnixDomainSockets_socketSupported(JNIEnv *env, jclass cl)
 {
-    WSAPROTOCOL_INFO info[5];
+    WSAPROTOCOL_INFO info[5]; // if not large enough, a buffer is malloc'd
     LPWSAPROTOCOL_INFO infoPtr = &info[0];
     DWORD len = sizeof(info);
     jboolean found;
@@ -141,8 +141,11 @@ Java_sun_nio_ch_UnixDomainSockets_socketSupported(JNIEnv *env, jclass cl)
     if (infoPtr != &info[0]) {
         free(infoPtr);
     }
+    /*
+     * check we can create a socket
+     */
     if (found) {
-        SOCKET s = WSASocket(PF_UNIX, SOCK_STREAM, 0, &provider, 0, 0);
+        SOCKET s = WSASocket(PF_UNIX, SOCK_STREAM, 0, &provider, 0, WSA_FLAG_OVERLAPPED);
         if (s == INVALID_SOCKET) {
             return JNI_FALSE;
         }
@@ -154,7 +157,7 @@ Java_sun_nio_ch_UnixDomainSockets_socketSupported(JNIEnv *env, jclass cl)
 JNIEXPORT jint JNICALL
 Java_sun_nio_ch_UnixDomainSockets_socket0(JNIEnv *env, jclass cl)
 {
-    SOCKET s = WSASocket(PF_UNIX, SOCK_STREAM, 0, &provider, 0, 0);
+    SOCKET s = WSASocket(PF_UNIX, SOCK_STREAM, 0, &provider, 0, WSA_FLAG_OVERLAPPED);
     if (s == INVALID_SOCKET) {
         return handleSocketError(env, WSAGetLastError());
     }
