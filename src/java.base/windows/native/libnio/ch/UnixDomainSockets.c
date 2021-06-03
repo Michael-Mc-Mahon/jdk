@@ -101,21 +101,18 @@ static int cmpGuid(GUID *g1, GUID *g2) {
     return !memcmp(g1->Data4, g2->Data4, 8);
 }
 
+static WSAPROTOCOL_INFO provider;
+
 JNIEXPORT jboolean JNICALL
 Java_sun_nio_ch_UnixDomainSockets_socketSupported(JNIEnv *env, jclass cl)
 {
     WSAPROTOCOL_INFO info[5];
     LPWSAPROTOCOL_INFO infoPtr = &info[0];
     DWORD len = sizeof(info);
-    jboolean retCode;
+    jboolean found;
 
-    SOCKET s = socket(PF_UNIX, SOCK_STREAM, 0);
-    if (s == INVALID_SOCKET) {
-        return JNI_FALSE;
-    }
-    closesocket(s);
     /*
-     * Check the Winsock service provider for AF_UNIX is the Microsoft one
+     * First locate the Microsoft AF_UNIX Winsock provider
      */
     int result = WSAEnumProtocols(0, infoPtr, &len);
     if (result == SOCKET_ERROR) {
@@ -130,26 +127,34 @@ Java_sun_nio_ch_UnixDomainSockets_socketSupported(JNIEnv *env, jclass cl)
             return JNI_FALSE;
         }
     }
-    retCode = JNI_FALSE;
+    found = JNI_FALSE;
     for (int i=0; i<result;  i++) {
         if (infoPtr[i].iAddressFamily != AF_UNIX)
             continue;
         GUID g = infoPtr[i].ProviderId;
         if (cmpGuid(&g, &MS_PROVIDER_ID)) {
-            retCode = JNI_TRUE;
+            found = JNI_TRUE;
+            provider = infoPtr[i];
             break;
         }
     }
     if (infoPtr != &info[0]) {
         free(infoPtr);
     }
-    return retCode;
+    if (found) {
+        SOCKET s = WSASocket(PF_UNIX, SOCK_STREAM, 0, &provider, 0, 0);
+        if (s == INVALID_SOCKET) {
+            return JNI_FALSE;
+        }
+        closesocket(s);
+    }
+    return found;
 }
 
 JNIEXPORT jint JNICALL
 Java_sun_nio_ch_UnixDomainSockets_socket0(JNIEnv *env, jclass cl)
 {
-    SOCKET s = socket(PF_UNIX, SOCK_STREAM, 0);
+    SOCKET s = WSASocket(PF_UNIX, SOCK_STREAM, 0, &provider, 0, 0);
     if (s == INVALID_SOCKET) {
         return handleSocketError(env, WSAGetLastError());
     }
