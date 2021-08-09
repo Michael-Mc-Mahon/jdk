@@ -85,6 +85,10 @@ class SocketDispatcher extends NativeDispatcher {
         return read(fd, address, len);
     }
 
+    static int maxsendfds() {
+        return 0;
+    }
+
     // -- Native methods --
 
     private static native int read0(FileDescriptor fd, long address, int len)

@@ -36,6 +36,10 @@ import java.io.IOException;
 class SocketDispatcher extends NativeDispatcher {
     SocketDispatcher() { }
 
+    static {
+        jdk.internal.loader.BootLoader.loadLibrary("nio");
+    }
+
     static final int max_send_fds = maxsendfds0();
 
     /**
