@@ -81,7 +81,7 @@ public class IOUtil {
                      boolean directIO, int alignment, NativeDispatcher nd)
         throws IOException
     {
-        return write(fd, src, position, directIO, false, -1, nd);
+        return write(fd, src, position, directIO, false, alignment, nd);
     }
 
     static int write(FileDescriptor fd, ByteBuffer src, long position,
