@@ -1820,8 +1820,8 @@ void LIR_Assembler::comp_op(LIR_Condition condition, LIR_Opr opr1, LIR_Opr opr2,
         __ teq(xhi, yhi);
         __ teq(xlo, ylo, eq);
       } else {
-        __ subs(xlo, xlo, ylo);
-        __ sbcs(xhi, xhi, yhi);
+        __ subs(Rtemp, xlo, ylo);
+        __ sbcs(Rtemp, xhi, yhi);
       }
     } else {
       ShouldNotReachHere();
@@ -2425,7 +2425,7 @@ void LIR_Assembler::emit_lock(LIR_OpLock* op) {
   Register hdr = op->hdr_opr()->as_pointer_register();
   Register lock = op->lock_opr()->as_pointer_register();
 
-  if (!UseFastLocking) {
+  if (UseHeavyMonitors) {
     __ b(*op->stub()->entry());
   } else if (op->code() == lir_lock) {
     assert(BasicLock::displaced_header_offset_in_bytes() == 0, "lock_reg must point to the displaced header");
