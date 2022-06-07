@@ -1370,12 +1370,10 @@ bool FileMapInfo::init_from_file(int fd) {
 
   _file_offset = header()->header_size(); // accounts for the size of _base_archive_name
 
-  if (is_static()) {
-    // just checking the last region is sufficient since the archive is written
-    // in sequential order
-    size_t len = os::lseek(fd, 0, SEEK_END);
-    FileMapRegion* si = space_at(MetaspaceShared::last_valid_region);
-    // The last space might be empty
+  size_t len = os::lseek(fd, 0, SEEK_END);
+
+  for (int i = 0; i <= MetaspaceShared::last_valid_region; i++) {
+    FileMapRegion* si = space_at(i);
     if (si->file_offset() > len || len - si->file_offset() < si->used()) {
       fail_continue("The shared archive file has been truncated.");
       return false;
@@ -1906,12 +1904,12 @@ bool FileMapInfo::relocate_pointers_in_core_regions(intx addr_delta) {
 
     BitMapView ptrmap((BitMap::bm_word_t*)bitmap_base, ptrmap_size_in_bits);
 
-    // Patch all pointers in the the mapped region that are marked by ptrmap.
+    // Patch all pointers in the mapped region that are marked by ptrmap.
     address patch_base = (address)mapped_base();
     address patch_end  = (address)mapped_end();
 
     // the current value of the pointers to be patched must be within this
-    // range (i.e., must be between the requesed base address, and the of the current archive).
+    // range (i.e., must be between the requested base address and the address of the current archive).
     // Note: top archive may point to objects in the base archive, but not the other way around.
     address valid_old_base = (address)header()->requested_base_address();
     address valid_old_end  = valid_old_base + mapping_end_offset();
