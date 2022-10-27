@@ -246,7 +246,7 @@ public final class ExtendedSocketOptions {
      * when the next write occurs on this channel, an attempt is made to send all channels
      * in the queue, in an ancillary control message together with the data. Setting this
      * option synchronizes with channel writes to make ordering predictable. No change in state
-     * of the given channel occurs until the write happens, at which time the channel is closed.
+     * of the given channel occurs until the write happens, at which time the channel to be sent is closed.
      * The channel's socket remains open and usable on the receiving side.
      * The send queue has an implementation specific maximum length (greater than or equal to one)
      * and it is an error to register more than this number of channels for sending before calling
@@ -275,15 +275,15 @@ public final class ExtendedSocketOptions {
      * using this mechanism, and has channels in its own send or receive queues, these
      * channels are closed before the channel is sent.
      */
-    public static final SocketOption<Channel> SO_SNDCHAN
+    public static final SocketOption<Channel> SO_TRANSFER_CHAN
     = new ExtSocketOption<Channel>
-    ("SO_SNDCHAN", Channel.class);
+    ("SO_TRANSFER_CHAN", Channel.class);
     
     /**
      * Enable reception of channels through a {@link SocketChannel} to a Unix Domain socket.
-     * Such channels can be sent using the {@link #SO_SNDCHAN} option. If disabled,
+     * Such channels can be sent using the {@link #SO_TRANSFER_CHAN} option. If disabled,
      * any channels received on a <i>Unix Domain</i> {@code SocketChannel} are automatically
-     * closed without being made available through the {@code SO_SNDCHAN} option.
+     * closed without being made available through the {@code SO_TRANSFER_CHAN} option.
      * This option is disabled by default and needs to be set before any data
      * containing incoming channels is read.
      */
@@ -320,7 +320,7 @@ public final class ExtendedSocketOptions {
         }
         if (unixDomainExtOptionsSupported) {
             options.add(SO_PEERCRED);
-            options.add(SO_SNDCHAN);
+            options.add(SO_TRANSFER_CHAN);
             options.add(SO_RCVCHAN_ENABLE);
         }
         if (ipDontFragmentSupported) {
@@ -403,7 +403,7 @@ public final class ExtendedSocketOptions {
 
                 if (option == SO_RCVCHAN_ENABLE) {
                     setSoSndChanEnable(chan, (Boolean)value);
-                } else if (option == SO_SNDCHAN) {
+                } else if (option == SO_TRANSFER_CHAN) {
                     setSoSndChan(chan, (Channel)value);
                 } else {
                     throw new UnsupportedOperationException("Unexpected option " + option);
@@ -420,7 +420,7 @@ public final class ExtendedSocketOptions {
                     sm.checkPermission(new NetworkPermission("getOption." + option.name()));
                 if (option == SO_RCVCHAN_ENABLE) {
                     return getSoSndChanEnable(chan);
-                } else if (option == SO_SNDCHAN) {
+                } else if (option == SO_TRANSFER_CHAN) {
                     return getSoSndChan(chan);
                 } else {
                     throw new UnsupportedOperationException("Unexpected option " + option);

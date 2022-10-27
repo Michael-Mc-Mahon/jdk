@@ -119,12 +119,12 @@ public abstract class ExtendedSocketOptions {
 
     private static boolean isUnixDomainOption(SocketOption<?> option) {
         return option.name().equals("SO_PEERCRED")
-            || option.name().equals("SO_SNDCHAN")
+            || option.name().equals("SO_TRANSFER_CHAN")
             || option.name().equals("SO_RCVCHAN_ENABLE");
     }
 
     private static boolean isByChannelOption(SocketOption<?> option) {
-        return option.name().equals("SO_SNDCHAN") || option.name().equals("SO_RCVCHAN_ENABLE");
+        return option.name().equals("SO_TRANSFER_CHAN") || option.name().equals("SO_RCVCHAN_ENABLE");
     }
 
     private static boolean isStreamOption(SocketOption<?> option, boolean server) {

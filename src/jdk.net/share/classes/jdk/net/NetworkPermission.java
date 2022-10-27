@@ -45,8 +45,8 @@ import java.security.BasicPermission;
  * </thead>
  * <tbody>
  * <tr>
- *   <th scope="row">setOption.SO_SNDCHAN</th>
- *   <td>set the {@link ExtendedSocketOptions#SO_SNDCHAN SO_SNDCHAN} option
+ *   <th scope="row">setOption.SO_TRANSFER_CHAN</th>
+ *   <td>set the {@link ExtendedSocketOptions#SO_TRANSFER_CHAN SO_TRANSFER_CHAN} option
  *       on any socket that supports it</td>
  *   <td>allows caller to send SocketChannels and ServerSocketChannels
  *       to other processes over a <i>Unix Domain</i> SocketChannel</td>
