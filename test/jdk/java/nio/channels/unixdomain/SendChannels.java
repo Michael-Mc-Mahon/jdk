@@ -87,8 +87,8 @@ public class SendChannels {
         SocketChannel c3 = SocketChannel.open(saddr);
         Files.deleteIfExists(usa.getPath());
         SocketChannel c4 = server.accept();
-        c1.setOption(ExtendedSocketOptions.SO_SNDCHAN, c3);
-        c1.setOption(ExtendedSocketOptions.SO_SNDCHAN, a1);
+        c1.setOption(ExtendedSocketOptions.SO_TRANSFER_CHAN, c3);
+        c1.setOption(ExtendedSocketOptions.SO_TRANSFER_CHAN, a1);
         c1.write(buf);
         c1.close();
         ByteBuffer rx = ByteBuffer.allocate(128);
@@ -96,7 +96,7 @@ public class SendChannels {
         rx.flip();
         List<SocketChannel> l = new LinkedList<>();
         SocketChannel x1;
-        while ((x1 = (SocketChannel)c2.getOption(ExtendedSocketOptions.SO_SNDCHAN)) != null) {
+        while ((x1 = (SocketChannel)c2.getOption(ExtendedSocketOptions.SO_TRANSFER_CHAN)) != null) {
             l.add(x1);
             System.out.println("Received: " + x1);
         }
