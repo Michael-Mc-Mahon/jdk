@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -65,6 +65,25 @@
      }
  }
 
+JNIEXPORT jint JNICALL
+Java_sun_nio_ch_SocketDispatcher_write0(JNIEnv *env, jclass clazz,
+                                        jobject fdo, jlong address, jint len)
+{
+    jint fd = fdval(env, fdo);
+    void *buf = (void *)jlong_to_ptr(address);
+
+    return convertReturnVal(env, write(fd, buf, len), JNI_FALSE);
+}
+
+JNIEXPORT jlong JNICALL
+Java_sun_nio_ch_SocketDispatcher_writev0(JNIEnv *env, jclass clazz,
+                                         jobject fdo, jlong address, jint len)
+{
+    jint fd = fdval(env, fdo);
+    struct iovec *iov = (struct iovec *)jlong_to_ptr(address);
+    return convertLongReturnVal(env, writev(fd, iov, len), JNI_FALSE);
+}
+
 #define MAX_SEND_FDS 10
 
 JNIEXPORT jint JNICALL
@@ -78,7 +97,7 @@ Java_sun_nio_ch_SocketDispatcher_maxsendfds0(JNIEnv *env, jclass clazz)
  */
 JNIEXPORT jint JNICALL
 Java_sun_nio_ch_SocketDispatcher_recvmsg0(JNIEnv *env, jclass clazz,
-                     jobject fdo, jlong address, jint len, jintArray fdarray)
+                                          jobject fdo, jlong address, jint len, jintArray fdarray)
 {
     jint fd = fdval(env, fdo);
     int ret;
@@ -90,17 +109,17 @@ Java_sun_nio_ch_SocketDispatcher_recvmsg0(JNIEnv *env, jclass clazz,
         char cmsgdata[CMSG_SPACE(sizeof(int) * MAX_SEND_FDS)];
         struct cmsghdr align;
     } u;
-
+    
     memset(&msg, 0, sizeof(msg));
     memset(u.cmsgdata, 0, sizeof(u.cmsgdata));
-
+    
     iov[0].iov_base = buf;
     iov[0].iov_len = len;
     msg.msg_iov = &iov[0];
     msg.msg_iovlen = 1;
     msg.msg_control = u.cmsgdata;
     msg.msg_controllen = sizeof(u.cmsgdata);
-
+    
     ret = recvmsg(fd, &msg, 0);
     if (ret < 0) {
         return convertReturnVal(env, ret, JNI_TRUE);
@@ -136,22 +155,22 @@ Java_sun_nio_ch_SocketDispatcher_recvmsg0(JNIEnv *env, jclass clazz,
  */
 JNIEXPORT jint JNICALL
 Java_sun_nio_ch_SocketDispatcher_sendmsg0(JNIEnv *env, jclass clazz,
-                      jobject fdo, jlong address, jint len, jobjectArray fdarray)
+                                          jobject fdo, jlong address, jint len, jobjectArray fdarray)
 {
     jint fd = fdval(env, fdo);
     void *buf = (void *)jlong_to_ptr(address);
     struct msghdr msg;
     struct iovec iov[1];
     int ret;
-
+    
     memset(&msg, 0, sizeof(msg));
-
+    
     iov[0].iov_base = buf;
     iov[0].iov_len = len;
     msg.msg_iov = &iov[0];
     msg.msg_iovlen = 1;
     msg.msg_controllen = 0;
-
+    
     if (fdarray != NULL) {
         jsize arraylen = (*env)->GetArrayLength(env, fdarray);
         int fds[arraylen];
@@ -161,7 +180,7 @@ Java_sun_nio_ch_SocketDispatcher_sendmsg0(JNIEnv *env, jclass clazz,
             char cmsgdata[CMSG_SPACE(sizeof(int) * MAX_SEND_FDS)];
             struct cmsghdr alignl;
         } u;
-
+        
         memset(u.cmsgdata, 0, sizeof(u.cmsgdata));
         for (int i=0; i<arraylen; i++) {
             jobject fdsend = (*env)->GetObjectArrayElement(env, fdarray, i);
@@ -175,7 +194,8 @@ Java_sun_nio_ch_SocketDispatcher_sendmsg0(JNIEnv *env, jclass clazz,
         cmsg->cmsg_type = SCM_RIGHTS;
         memcpy(CMSG_DATA(cmsg), fds, sizeof(int) * arraylen);
     }
-
+    
     ret = sendmsg(fd, &msg, 0);
     return convertReturnVal(env, ret, JNI_FALSE);
 }
+
