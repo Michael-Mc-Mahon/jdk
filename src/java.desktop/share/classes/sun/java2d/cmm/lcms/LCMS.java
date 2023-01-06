@@ -53,7 +53,7 @@ final class LCMS implements PCMM {
         return null;
     }
 
-    private static LCMSProfile getLcmsProfile(Profile p) {
+    static LCMSProfile getLcmsProfile(Profile p) {
         if (p instanceof LCMSProfile) {
             return (LCMSProfile)p;
         }
@@ -94,8 +94,6 @@ final class LCMS implements PCMM {
             lock.unlockWrite(stamp);
         }
     }
-
-    static synchronized native LCMSProfile getProfileID(ICC_Profile profile);
 
     /* Helper method used from LCMSColorTransfrom */
     static long createTransform(
@@ -143,7 +141,7 @@ final class LCMS implements PCMM {
                                     Object srcData, Object dstData,
                                     int srcType, int dstType);
 
-    private LCMS() {};
+    private LCMS() {}
 
     private static LCMS theLcms = null;
 
