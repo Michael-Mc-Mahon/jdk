@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,10 +31,13 @@ import java.awt.image.ColorModel;
 import java.awt.image.ComponentColorModel;
 import java.awt.image.ComponentSampleModel;
 import java.awt.image.Raster;
+import java.nio.ByteOrder;
 
 import sun.awt.image.ByteComponentRaster;
 import sun.awt.image.IntegerComponentRaster;
 import sun.awt.image.ShortComponentRaster;
+
+import static java.nio.ByteOrder.LITTLE_ENDIAN;
 
 final class LCMSImageLayout {
 
@@ -59,12 +62,12 @@ final class LCMSImageLayout {
     private static final int PT_BGR_8   = PT_RGB_8  | DOSWAP;
     private static final int PT_ABGR_8  = PT_BGR_8  | EXTRA_SH(1);
 //  private static final int PT_BGRA_8  = PT_ABGR_8 | SWAPFIRST;
-
+    private static final int SWAP_ENDIAN =
+            ByteOrder.nativeOrder() == LITTLE_ENDIAN ? DOSWAP : 0;
     private static final int DT_BYTE = 0;
     private static final int DT_SHORT = 1;
     private static final int DT_INT = 2;
     private static final int DT_DOUBLE = 3;
-    boolean isIntPacked = false;
     int pixelType;
     int dataType;
     int width;
@@ -143,16 +146,13 @@ final class LCMSImageLayout {
 
         switch (image.getType()) {
             case BufferedImage.TYPE_INT_RGB:
-                l.pixelType = PT_ARGB_8;
-                l.isIntPacked = true;
+                l.pixelType = PT_ARGB_8 ^ SWAP_ENDIAN;
                 break;
             case BufferedImage.TYPE_INT_ARGB:
-                l.pixelType = PT_ARGB_8;
-                l.isIntPacked = true;
+                l.pixelType = PT_ARGB_8 ^ SWAP_ENDIAN;
                 break;
             case BufferedImage.TYPE_INT_BGR:
-                l.pixelType = PT_ABGR_8;
-                l.isIntPacked = true;
+                l.pixelType = PT_ABGR_8 ^ SWAP_ENDIAN;
                 break;
             case BufferedImage.TYPE_3BYTE_BGR:
                 l.pixelType = PT_BGR_8;
@@ -172,14 +172,10 @@ final class LCMSImageLayout {
                  * has to be supported.
                  */
                 ColorModel cm = image.getColorModel();
-                /* todo
-                 * Our generic code for rasters does not support alpha channels,
-                 * but it would be good to improve it when it is used from here.
-                 * See "createImageLayout(image.getRaster())" below.
-                 */
-                if (!cm.hasAlpha() && cm instanceof ComponentColorModel) {
-                    ComponentColorModel ccm = (ComponentColorModel) cm;
-
+                // lcms as of now does not support pre-alpha
+                if (!cm.isAlphaPremultiplied()
+                        && cm instanceof ComponentColorModel ccm)
+                {
                     // verify whether the component size is fine
                     int[] cs = ccm.getComponentSize();
                     for (int s : cs) {
@@ -187,9 +183,7 @@ final class LCMSImageLayout {
                             return null;
                         }
                     }
-
-                    return createImageLayout(image.getRaster());
-
+                    return createImageLayout(image.getRaster(), cm.hasAlpha());
                 }
                 return null;
         }
@@ -326,7 +320,7 @@ final class LCMSImageLayout {
         return checkIndex(res, Integer.MAX_VALUE);
     }
 
-    static LCMSImageLayout createImageLayout(Raster r) {
+    static LCMSImageLayout createImageLayout(Raster r, boolean hasAlpha) {
         LCMSImageLayout l = new LCMSImageLayout();
         if (r instanceof ByteComponentRaster &&
                 r.getSampleModel() instanceof ComponentSampleModel) {
@@ -334,7 +328,9 @@ final class LCMSImageLayout {
 
             ComponentSampleModel csm = (ComponentSampleModel)r.getSampleModel();
 
-            l.pixelType = CHANNELS_SH(br.getNumBands()) | BYTES_SH(1);
+            int numBands = br.getNumBands();
+            l.pixelType = (hasAlpha ? CHANNELS_SH(numBands - 1) | EXTRA_SH(1)
+                                    : CHANNELS_SH(numBands)) | BYTES_SH(1);
 
             int[] bandOffsets = csm.getBandOffsets();
             BandOrder order = BandOrder.getBandOrder(bandOffsets);
@@ -343,7 +339,7 @@ final class LCMSImageLayout {
             switch (order) {
                 case INVERTED:
                     l.pixelType |= DOSWAP;
-                    firstBand  = csm.getNumBands() - 1;
+                    firstBand  = numBands - 1;
                     break;
                 case DIRECT:
                     // do nothing
@@ -357,11 +353,14 @@ final class LCMSImageLayout {
             l.nextPixelOffset = br.getPixelStride();
 
             l.offset = br.getDataOffset(firstBand);
-            l.dataArray = br.getDataStorage();
             l.dataType = DT_BYTE;
+            byte[] data = br.getDataStorage();
+            l.dataArray = data;
+            l.dataArrayLength = data.length;
 
             l.width = br.getWidth();
             l.height = br.getHeight();
+            l.verify();
             return l;
         }
         return null;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,15 +53,10 @@ final class LCMSTransform implements ColorTransform {
     private static final class NativeTransform {
         private long ID;
         private int inFormatter;
-        private boolean isInIntPacked;
         private int outFormatter;
-        private boolean isOutIntPacked;
 
         private boolean match(LCMSImageLayout in, LCMSImageLayout out) {
-            return inFormatter == in.pixelType
-                    && isInIntPacked == in.isIntPacked
-                    && outFormatter == out.pixelType
-                    && isOutIntPacked == out.isIntPacked;
+            return inFormatter == in.pixelType && outFormatter == out.pixelType;
         }
     }
 
@@ -115,16 +110,10 @@ final class LCMSTransform implements ColorTransform {
                 if (tfm == null || !tfm.match(in, out)) {
                     tfm = new NativeTransform();
                     tfm.inFormatter = in.pixelType;
-                    tfm.isInIntPacked = in.isIntPacked;
-
                     tfm.outFormatter = out.pixelType;
-                    tfm.isOutIntPacked = out.isIntPacked;
-
                     tfm.ID = LCMS.createTransform(lcmsProfiles, renderingIntent,
                                                   tfm.inFormatter,
-                                                  tfm.isInIntPacked,
-                                                  tfm.outFormatter,
-                                                  tfm.isOutIntPacked, tfm);
+                                                  tfm.outFormatter, tfm);
                     // Disposer will destroy forgotten transform
                     transform = tfm;
                 }
@@ -435,9 +424,9 @@ final class LCMSTransform implements ColorTransform {
     public void colorConvert(Raster src, WritableRaster dst) {
 
         LCMSImageLayout srcIL, dstIL;
-        dstIL = LCMSImageLayout.createImageLayout(dst);
+        dstIL = LCMSImageLayout.createImageLayout(dst, false);
         if (dstIL != null) {
-            srcIL = LCMSImageLayout.createImageLayout(src);
+            srcIL = LCMSImageLayout.createImageLayout(src, false);
             if (srcIL != null) {
                 doTransform(srcIL, dstIL);
                 return;
