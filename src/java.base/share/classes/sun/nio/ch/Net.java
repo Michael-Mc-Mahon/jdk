@@ -389,11 +389,11 @@ public class Net {
             throw new IllegalArgumentException("Invalid option value");
 
         assert isByChannelOption(name);
-        extendedOptions.setOptionByChannel(chan, name, value);
+        EXTENDED_OPTIONS.setOptionByChannel(chan, name, value);
     }
 
     static boolean isByChannelOption(SocketOption<?> name) {
-        return extendedOptions.byChannelOptions().contains(name);
+        return EXTENDED_OPTIONS.byChannelOptions().contains(name);
     }
 
     // Some options require the original channel to get
@@ -401,7 +401,7 @@ public class Net {
         throws IOException
     {
         assert isByChannelOption(name);
-        return extendedOptions.getOptionByChannel(chan, name);
+        return EXTENDED_OPTIONS.getOptionByChannel(chan, name);
     }
 
     static void setSocketOption(FileDescriptor fd, SocketOption<?> name, Object value)
