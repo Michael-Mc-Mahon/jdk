@@ -50,6 +50,16 @@
 #endif
 #endif
 
+#if defined(__linux__)
+  #if !defined(TCP_FASTOPEN)
+    #define TCP_FASTOPEN 23
+  #endif
+  #if !defined(TCP_FASTOPEN_CONNECT)
+    #define TCP_FASTOPEN_CONNECT 30
+  #endif
+#endif
+
+
 /* To be able to name the Java constants the same as the C constants without
    having the preprocessor rewrite those identifiers, add PREFIX_ to all
    identifiers matching a C constant. The PREFIX_ is filtered out in the
@@ -112,6 +122,14 @@ class SocketOptionRegistry {
             // IPPROTO_TCP is 6
             map.put(new RegistryKey(StandardSocketOptions.PREFIX_TCP_NODELAY,
                 Net.UNSPEC), new OptionKey(6, TCP_NODELAY));
+
+            map.put(new RegistryKey(StandardSocketOptions.PREFIX_TCP_FASTOPEN,
+                Net.UNSPEC), new OptionKey(6, TCP_FASTOPEN));
+
+#if defined(__linux__)
+            map.put(new RegistryKey(StandardSocketOptions.PREFIX_TCP_FASTOPEN_CONNECT,
+                Net.UNSPEC), new OptionKey(6, TCP_FASTOPEN_CONNECT));
+#endif
 
             // IPPROTO_IP is 0
             map.put(new RegistryKey(StandardSocketOptions.PREFIX_IP_TOS,

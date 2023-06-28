@@ -60,6 +60,14 @@
   #endif
 #endif
 
+#ifndef MSG_FASTOPEN
+  #ifdef __linux__
+    #define MSG_FASTOPEN  0x20000000
+  #else
+    #define MSG_FASTOPEN  0
+  #endif
+#endif
+
 /**
  * IPV6_ADD_MEMBERSHIP/IPV6_DROP_MEMBERSHIP may not be defined on OSX and AIX
  */
@@ -395,6 +403,57 @@ Java_sun_nio_ch_Net_connect0(JNIEnv *env, jclass clazz, jboolean preferIPv6,
     }
     return 1;
 }
+
+JNIEXPORT jint JNICALL
+Java_sun_nio_ch_Net_connectx0(JNIEnv *env, jclass clazz, jboolean preferIPv6, jobject fdo,
+                              jobject iao, jint port, jlong bufAddress, jint len)
+{
+    SOCKETADDRESS sa;
+    int sa_len = 0;
+    void *buf = (void *)jlong_to_ptr(bufAddress);
+
+    if (NET_InetAddressToSockaddr(env, iao, port, &sa, &sa_len, preferIPv6) != 0) {
+        return IOS_THROWN;
+    }
+
+    int n = -1;
+    errno = ENOPROTOOPT;
+
+#ifdef __linux__
+    n = sendto(fdval(env, fdo), buf, len, MSG_FASTOPEN, &sa.sa, sa_len);
+#endif
+
+#ifdef __APPLE__
+    sa_endpoints_t endpoints;
+    struct iovec iov;
+
+	endpoints.sae_srcif = 0;
+	endpoints.sae_srcaddr = NULL;
+	endpoints.sae_srcaddrlen = 0;
+	endpoints.sae_dstaddr = (struct sockaddr *) &sa;
+	endpoints.sae_dstaddrlen = sa_len;
+
+	iov.iov_base = buf;
+	iov.iov_len = len;
+
+    size_t nsent;
+	n = connectx(fdval(env, fdo), &endpoints, 0, CONNECT_DATA_IDEMPOTENT, &iov, 1, &nsent, NULL);
+	if (n == 0) {
+	    n = nsent;
+    }
+#endif
+
+    if (n < 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            return IOS_UNAVAILABLE;
+        } if (errno == EINTR) {
+            return IOS_INTERRUPTED;
+        }
+        return handleSocketError(env, errno);
+    }
+    return n;
+}
+
 
 JNIEXPORT jint JNICALL
 Java_sun_nio_ch_Net_accept(JNIEnv *env, jclass clazz, jobject fdo, jobject newfdo,

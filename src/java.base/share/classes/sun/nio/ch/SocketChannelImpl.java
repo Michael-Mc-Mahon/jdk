@@ -99,6 +99,9 @@ class SocketChannelImpl
     // Connection reset protected by readLock
     private boolean connectionReset;
 
+    // Data to send with
+    private volatile ByteBuffer fastOpenData;
+
     // -- The following fields are protected by stateLock
 
     // set true when exclusive binding is on and SO_REUSEADDR is emulated
@@ -281,6 +284,16 @@ class SocketChannelImpl
                     isReuseAddress = (Boolean) value;
                     return this;
                 }
+
+                if (name == StandardSocketOptions.TCP_FASTOPEN_CONNECT_DATA) {
+                    var data = ((ByteBuffer) (Objects.requireNonNull(value))).duplicate();
+                    if (data.remaining() == 0)
+                        throw new IllegalArgumentException("TFO data cannot be 0 bytes");
+                    if (isConnected())
+                        throw new AlreadyConnectedException();
+                    this.fastOpenData = data;
+                    return this;
+                }
             }
 
             // no options that require special handling
@@ -297,6 +310,10 @@ class SocketChannelImpl
         Objects.requireNonNull(name);
         if (!supportedOptions().contains(name))
             throw new UnsupportedOperationException("'" + name + "' not supported");
+        if (name.equals("TCP_FASTOPEN_CONNECT_DATA")) {
+            // not supported for reading
+            throw new UnsupportedOperationException();
+        }
 
         synchronized (stateLock) {
             ensureOpen();
@@ -334,8 +351,13 @@ class SocketChannelImpl
             set.add(StandardSocketOptions.TCP_NODELAY);
             // additional options required by socket adaptor
             set.add(StandardSocketOptions.IP_TOS);
+
             set.add(ExtendedSocketOption.SO_OOBINLINE);
             set.addAll(ExtendedSocketOptions.clientSocketOptions());
+
+            // ??
+            set.add(StandardSocketOptions.TCP_FASTOPEN_CONNECT_DATA);
+
             return Collections.unmodifiableSet(set);
         }
 
@@ -860,6 +882,38 @@ class SocketChannelImpl
         }
     }
 
+    /**
+     * Connect this channel socket to a remote address. If data is non-null it
+     * uses TCP Fast Open to sends data in the SYN packet.
+     */
+    private int connect(SocketAddress remote, ByteBuffer data) throws IOException {
+        if (data == null) {
+            return Net.connect(family, fd, remote);
+        }
+
+        int pos = data.position();
+        int lim = data.limit();
+        assert (pos <= lim);
+        int size = (pos <= lim ? lim - pos : 0);
+        int n;
+        if (data instanceof DirectBuffer) {
+            n = Net.connectx(family, fd, remote, ((DirectBuffer) data).address(), size);
+        } else {
+            ByteBuffer bb = Util.getTemporaryDirectBuffer(size);
+            try {
+                bb.put(data);
+                bb.flip();
+                n = Net.connectx(family, fd, remote, ((DirectBuffer) bb).address(), size);
+            } finally {
+                Util.offerFirstTemporaryDirectBuffer(bb);
+            }
+        }
+
+        // handle IOS_INTERRUPTED, IOS_UNAVAILABLE and n < size ???
+
+        return n;
+    }
+
     @Override
     public boolean connect(SocketAddress remote) throws IOException {
         SocketAddress sa = checkRemote(remote);
@@ -877,7 +931,7 @@ class SocketChannelImpl
                         if (isUnixSocket()) {
                             n = UnixDomainSockets.connect(fd, sa);
                         } else {
-                            n = Net.connect(family, fd, sa);
+                            n = connect(sa, fastOpenData);
                         }
                         if (n > 0) {
                             connected = true;

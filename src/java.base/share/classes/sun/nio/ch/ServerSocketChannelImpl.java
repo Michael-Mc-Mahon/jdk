@@ -269,6 +269,10 @@ class ServerSocketChannelImpl
             if (Net.isReusePortAvailable()) {
                 set.add(StandardSocketOptions.SO_REUSEPORT);
             }
+
+            // ??
+            set.add(StandardSocketOptions.TCP_FASTOPEN);
+
             set.addAll(ExtendedSocketOptions.serverSocketOptions());
             return Collections.unmodifiableSet(set);
         }
