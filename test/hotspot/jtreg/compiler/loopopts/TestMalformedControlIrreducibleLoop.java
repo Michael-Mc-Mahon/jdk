@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Red Hat, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,28 +23,24 @@
 
 /*
  * @test
- * @bug 8004240
- * @summary Verify that getAdapterPreference returns an unmodifiable list.
- * @modules java.base/sun.util.locale.provider
- * @compile -XDignore.symbol.file Bug8004240.java
- * @run main Bug8004240
+ * @bug 8307927
+ * @summary C2: "malformed control flow" with irreducible loop
+ * @compile MalformedControlIrreducibleLoop.jasm
+ * @run main/othervm -Xcomp -XX:-TieredCompilation -XX:CompileOnly=TestMalformedControlIrreducibleLoop::test TestMalformedControlIrreducibleLoop
  */
 
-import java.util.List;
-import sun.util.locale.provider.LocaleProviderAdapter;
-
-public class Bug8004240 {
-
+public class TestMalformedControlIrreducibleLoop {
     public static void main(String[] args) {
-        List<LocaleProviderAdapter.Type> types = LocaleProviderAdapter.getAdapterPreference();
+        new MalformedControlIrreducibleLoop();
+        test(false);
+    }
 
-        try {
-            types.set(0, null);
-        } catch (UnsupportedOperationException e) {
-            // success
-            return;
+    private static void test(boolean flag) {
+        int i;
+        for (i = 1; i < 2; i *= 2) {
         }
-
-        throw new RuntimeException("LocaleProviderAdapter.getAdapterPrefence() returned a modifiable list.");
+        if (flag) {
+            MalformedControlIrreducibleLoop.actualTest(i);
+        }
     }
 }
