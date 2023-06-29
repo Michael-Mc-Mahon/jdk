@@ -29,6 +29,7 @@ import java.io.FileDescriptor;
 import java.net.SocketException;
 import java.net.SocketOption;
 import java.net.StandardProtocolFamily;
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
@@ -200,6 +201,19 @@ public final class ExtendedSocketOptions {
             ("SO_PEERCRED", UnixDomainPrincipal.class);
 
     /**
+     * TCP_FASTOPEN. On Linux the value of this socket option is maximum length of
+     * pending SYNs. On macOS a value of 1 enables fast open.
+     */
+    public static final SocketOption<Integer> TCP_FASTOPEN =
+            new ExtSocketOption<Integer>("TCP_FASTOPEN", Integer.class);
+
+    /**
+     * TCP_FASTOPEN_CONNECT with data to include with SYN.
+     */
+    public static final SocketOption<ByteBuffer> TCP_FASTOPEN_CONNECT_DATA =
+            new ExtSocketOption<>("TCP_FASTOPEN_CONNECT_DATA", ByteBuffer.class);
+
+    /**
      * Disable IP packet fragmentation.
      *
      * <p> The value of this socket option is a {@code Boolean} that represents
@@ -235,8 +249,12 @@ public final class ExtendedSocketOptions {
             platformSocketOptions.peerCredentialsSupported();
     private static final boolean incomingNapiIdOptSupported  =
             platformSocketOptions.incomingNapiIdSupported();
-    private static final boolean ipDontFragmentSupported  =
+    private static final boolean ipDontFragmentSupported =
             platformSocketOptions.ipDontFragmentSupported();
+    private static final boolean tcpFastOpenSupported =
+            platformSocketOptions.tcpFastOpenSupported();
+    private static final boolean tcpFastOpenConnectDataSupported =
+            platformSocketOptions.tcpFastOpenConnectDataSupported();
 
     private static final Set<SocketOption<?>> extendedOptions = options();
 
@@ -256,6 +274,12 @@ public final class ExtendedSocketOptions {
         }
         if (ipDontFragmentSupported) {
             options.add(IP_DONTFRAGMENT);
+        }
+        if (tcpFastOpenSupported) {
+            options.add(TCP_FASTOPEN);
+        }
+        if (tcpFastOpenConnectDataSupported) {
+            options.add(TCP_FASTOPEN_CONNECT_DATA);
         }
         return Collections.unmodifiableSet(options);
     }
@@ -284,6 +308,10 @@ public final class ExtendedSocketOptions {
                     setTcpKeepAliveTime(fd, (Integer) value);
                 } else if (option == TCP_KEEPINTERVAL) {
                     setTcpKeepAliveIntvl(fd, (Integer) value);
+                } else if (option == TCP_FASTOPEN) {
+                    setTcpFastOpen(fd, (Integer) value);
+                } else if (option == TCP_FASTOPEN_CONNECT_DATA) {
+                    setTcpFastOpenConnectData(fd, (ByteBuffer) value);
                 } else if (option == SO_INCOMING_NAPI_ID) {
                     if (!incomingNapiIdOptSupported)
                         throw new UnsupportedOperationException("Attempt to set unsupported option " + option);
@@ -314,6 +342,8 @@ public final class ExtendedSocketOptions {
                     return getTcpKeepAliveTime(fd);
                 } else if (option == TCP_KEEPINTERVAL) {
                     return getTcpKeepAliveIntvl(fd);
+                } else if (option == TCP_FASTOPEN_CONNECT_DATA) {
+                    return getTcpFastOpenConnectData(fd);
                 } else if (option == SO_PEERCRED) {
                     return getSoPeerCred(fd);
                 } else if (option == SO_INCOMING_NAPI_ID) {
@@ -363,6 +393,14 @@ public final class ExtendedSocketOptions {
         platformSocketOptions.setTcpKeepAliveIntvl(fdAccess.get(fd), value);
     }
 
+    private static void setTcpFastOpen(FileDescriptor fd, int value) throws SocketException {
+        platformSocketOptions.setTcpFastOpen(fdAccess.get(fd), value);
+    }
+
+    private static void setTcpFastOpenConnectData(FileDescriptor fd, ByteBuffer data) throws SocketException {
+        throw new UnsupportedOperationException();
+    }
+
     private static int getTcpkeepAliveProbes(FileDescriptor fd) throws SocketException {
         return platformSocketOptions.getTcpkeepAliveProbes(fdAccess.get(fd));
     }
@@ -377,6 +415,14 @@ public final class ExtendedSocketOptions {
 
     private static int getTcpKeepAliveIntvl(FileDescriptor fd) throws SocketException {
         return platformSocketOptions.getTcpKeepAliveIntvl(fdAccess.get(fd));
+    }
+
+    private static int getTcpFastOpen(FileDescriptor fd) throws SocketException {
+        throw new UnsupportedOperationException();
+    }
+
+    private static int getTcpFastOpenConnectData(FileDescriptor fd) throws SocketException {
+        throw new UnsupportedOperationException();
     }
 
     private static int getIncomingNapiId(FileDescriptor fd) throws SocketException {
@@ -438,6 +484,14 @@ public final class ExtendedSocketOptions {
             return false;
         }
 
+        boolean tcpFastOpenSupported() {
+            return false;
+        }
+
+        boolean tcpFastOpenConnectDataSupported() {
+            return false;
+        }
+
         void setTcpkeepAliveProbes(int fd, final int value) throws SocketException {
             throw new UnsupportedOperationException("unsupported TCP_KEEPCNT option");
         }
@@ -456,6 +510,10 @@ public final class ExtendedSocketOptions {
 
         void setIpDontFragment(int fd, final boolean value, boolean isIPv6) throws SocketException {
             throw new UnsupportedOperationException("unsupported IP_DONTFRAGMENT option");
+        }
+
+        void setTcpFastOpen(int fd, int value) throws SocketException {
+            throw new UnsupportedOperationException();
         }
 
         boolean getIpDontFragment(int fd, boolean isIPv6) throws SocketException {

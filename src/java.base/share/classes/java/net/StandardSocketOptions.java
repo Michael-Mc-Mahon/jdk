@@ -25,8 +25,6 @@
 
 package java.net;
 
-import java.nio.ByteBuffer;
-
 /**
  * Defines the <em>standard</em> socket options.
  *
@@ -389,23 +387,6 @@ public final class StandardSocketOptions {
     public static final SocketOption<Boolean> TCP_NODELAY =
         new StdSocketOption<Boolean>("TCP_NODELAY", Boolean.class);
 
-    /**
-     * ??
-     */
-    public static final SocketOption<Boolean> TCP_FASTOPEN =
-            new StdSocketOption<Boolean>("TCP_FASTOPEN", Boolean.class);
-
-    /**
-     * ??
-     */
-    public static final SocketOption<Boolean> TCP_FASTOPEN_CONNECT =
-            new StdSocketOption<>("TCP_FASTOPEN_CONNECT", Boolean.class);
-
-    /**
-     * ??
-     */
-    public static final SocketOption<ByteBuffer> TCP_FASTOPEN_CONNECT_DATA =
-            new StdSocketOption<>("TCP_FASTOPEN_CONNECT_DATA", ByteBuffer.class);
 
     private static class StdSocketOption<T> implements SocketOption<T> {
         private final String name;

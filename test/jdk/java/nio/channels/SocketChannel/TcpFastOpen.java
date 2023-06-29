@@ -23,24 +23,27 @@
 
 /*
  * @test
- * @run junit FastOpen
+ * @run junit TcpFastOpen
  */
 
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.StandardSocketOptions;
 import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import static java.nio.charset.StandardCharsets.*;
+import static jdk.net.ExtendedSocketOptions.*;
 
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
-class FastOpen {
+class TcpFastOpen {
 
-    void test() throws IOException {
+    /**
+     * Basic test of TCP_FASTOPEN_CONNECT_DATA.
+     */
+    void testFastOpenConnectData() throws IOException {
         try (ServerSocketChannel listener = ServerSocketChannel.open();
              SocketChannel sc = SocketChannel.open()) {
 
@@ -51,7 +54,7 @@ class FastOpen {
             String part2 = "+greetings";
 
             ByteBuffer data = ByteBuffer.wrap(part1.getBytes(UTF_8));
-            sc.setOption(StandardSocketOptions.TCP_FASTOPEN_CONNECT_DATA, data);
+            sc.setOption(TCP_FASTOPEN_CONNECT_DATA, data);
             sc.connect(listener.getLocalAddress());
 
             ByteBuffer message = ByteBuffer.wrap(part2.getBytes(UTF_8));
@@ -72,7 +75,6 @@ class FastOpen {
             String actual = UTF_8.decode(buf).toString();
             assertEquals(expected, actual);
         }
-
     }
 
 }

@@ -99,8 +99,8 @@ class SocketChannelImpl
     // Connection reset protected by readLock
     private boolean connectionReset;
 
-    // Data to send with
-    private volatile ByteBuffer fastOpenData;
+    // Data to send when connecting (TCP FastOpen)
+    private volatile ByteBuffer tcpFastOpenData;
 
     // -- The following fields are protected by stateLock
 
@@ -285,13 +285,14 @@ class SocketChannelImpl
                     return this;
                 }
 
-                if (name == StandardSocketOptions.TCP_FASTOPEN_CONNECT_DATA) {
+                // extended socket option handled here
+                if (name.name().equals("TCP_FASTOPEN_CONNECT_DATA")) {
                     var data = ((ByteBuffer) (Objects.requireNonNull(value))).duplicate();
                     if (data.remaining() == 0)
                         throw new IllegalArgumentException("TFO data cannot be 0 bytes");
                     if (isConnected())
                         throw new AlreadyConnectedException();
-                    this.fastOpenData = data;
+                    this.tcpFastOpenData = data;
                     return this;
                 }
             }
@@ -310,10 +311,6 @@ class SocketChannelImpl
         Objects.requireNonNull(name);
         if (!supportedOptions().contains(name))
             throw new UnsupportedOperationException("'" + name + "' not supported");
-        if (name.equals("TCP_FASTOPEN_CONNECT_DATA")) {
-            // not supported for reading
-            throw new UnsupportedOperationException();
-        }
 
         synchronized (stateLock) {
             ensureOpen();
@@ -351,13 +348,8 @@ class SocketChannelImpl
             set.add(StandardSocketOptions.TCP_NODELAY);
             // additional options required by socket adaptor
             set.add(StandardSocketOptions.IP_TOS);
-
             set.add(ExtendedSocketOption.SO_OOBINLINE);
             set.addAll(ExtendedSocketOptions.clientSocketOptions());
-
-            // ??
-            set.add(StandardSocketOptions.TCP_FASTOPEN_CONNECT_DATA);
-
             return Collections.unmodifiableSet(set);
         }
 
@@ -924,7 +916,7 @@ class SocketChannelImpl
 
     /**
      * Connect this channel socket to a remote address. If data is non-null it
-     * uses TCP Fast Open to sends data in the SYN packet.
+     * uses TCP Fast Open to send data in the SYN packet.
      */
     private int connect(SocketAddress remote, ByteBuffer data) throws IOException {
         if (data == null) {
@@ -948,9 +940,6 @@ class SocketChannelImpl
                 Util.offerFirstTemporaryDirectBuffer(bb);
             }
         }
-
-        // handle IOS_INTERRUPTED, IOS_UNAVAILABLE and n < size ???
-
         return n;
     }
 
@@ -971,7 +960,7 @@ class SocketChannelImpl
                         if (isUnixSocket()) {
                             n = UnixDomainSockets.connect(fd, sa);
                         } else {
-                            n = connect(sa, fastOpenData);
+                            n = connect(sa, tcpFastOpenData);
                         }
                         if (n > 0) {
                             connected = true;

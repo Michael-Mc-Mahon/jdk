@@ -60,13 +60,10 @@
   #endif
 #endif
 
-#ifndef MSG_FASTOPEN
-  #ifdef __linux__
-    #define MSG_FASTOPEN  0x20000000
-  #else
-    #define MSG_FASTOPEN  0
-  #endif
+#if defined(__linux__) && !defined(MSG_FASTOPEN)
+  #define MSG_FASTOPEN 0x20000000
 #endif
+
 
 /**
  * IPV6_ADD_MEMBERSHIP/IPV6_DROP_MEMBERSHIP may not be defined on OSX and AIX
@@ -416,16 +413,29 @@ Java_sun_nio_ch_Net_connectx0(JNIEnv *env, jclass clazz, jboolean preferIPv6, jo
         return IOS_THROWN;
     }
 
-    int n = -1;
-    errno = ENOPROTOOPT;
+#if defined(__linux__)
 
-#ifdef __linux__
-    n = sendto(fdval(env, fdo), buf, len, MSG_FASTOPEN, &sa.sa, sa_len);
-#endif
+    // TBD - what if sendto is interrupted (EINTR), is initial data lost?
 
-#ifdef __APPLE__
+    ssize_t n = (int) sendto(fdval(env, fdo), buf, len, MSG_FASTOPEN, &sa.sa, sa_len);
+    if (n >= 0) {
+        if (n < len) {
+            JNU_ThrowIOException(env, "TFO data too large");
+            return IOS_THROWN;
+        }
+        return 1; // connected
+    }
+    if (errno == EINPROGRESS) {
+        JNU_ThrowIOException(env, "Connection not completed immediately, TFO data lost");
+        return IOS_THROWN;
+    }
+    return handleSocketError(env, errno);
+
+#elif defined(__APPLE__)
+
     sa_endpoints_t endpoints;
     struct iovec iov;
+    size_t nsent;
 
 	endpoints.sae_srcif = 0;
 	endpoints.sae_srcaddr = NULL;
@@ -436,22 +446,25 @@ Java_sun_nio_ch_Net_connectx0(JNIEnv *env, jclass clazz, jboolean preferIPv6, jo
 	iov.iov_base = buf;
 	iov.iov_len = len;
 
-    size_t nsent;
-	n = connectx(fdval(env, fdo), &endpoints, 0, CONNECT_DATA_IDEMPOTENT, &iov, 1, &nsent, NULL);
-	if (n == 0) {
-	    n = nsent;
-    }
-#endif
+    // TBD - what if connectx is interrupted (EINTR), is nsent set?
 
-    if (n < 0) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            return IOS_UNAVAILABLE;
-        } if (errno == EINTR) {
-            return IOS_INTERRUPTED;
-        }
-        return handleSocketError(env, errno);
+    int n = connectx(fdval(env, fdo), &endpoints, 0, CONNECT_DATA_IDEMPOTENT, &iov, 1, &nsent, NULL);
+    if ((n == 0 || errno == EINPROGRESS) && (nsent < (size_t)len)) {
+        JNU_ThrowIOException(env, "TFO data too large");
+        return IOS_THROWN;
     }
-    return n;
+	if (n == 0) {
+	    return 1; // connected
+	}
+	if (errno == EINPROGRESS) {
+	    return IOS_UNAVAILABLE;
+	}
+	return handleSocketError(env, errno);
+
+#else
+    JNU_ThrowInternalError(env, "should not reach here");
+    return IOS_THROWN;
+#endif
 }
 
 
