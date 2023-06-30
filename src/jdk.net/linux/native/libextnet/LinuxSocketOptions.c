@@ -290,3 +290,13 @@ JNIEXPORT jboolean JNICALL Java_jdk_net_LinuxSocketOptions_getIpDontFragment0
     handleError(env, rv, "get option IP_DONTFRAGMENT failed");
     return optval == IP_PMTUDISC_DO ? JNI_TRUE : JNI_FALSE;
 }
+
+#if !defined(TCP_FASTOPEN)
+    #define TCP_FASTOPEN 23
+#endif
+
+JNIEXPORT void JNICALL Java_jdk_net_LinuxSocketOptions_setTcpFastOpen0
+(JNIEnv *env, jobject unused, jint fd, jint optval) {
+    int rv = setsockopt(fd, IPPROTO_TCP, TCP_FASTOPEN, &optval, sizeof (optval));
+    handleError(env, (jint) rv, "set option TCP_FASTOPEN failed");
+}

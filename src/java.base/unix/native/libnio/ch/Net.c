@@ -60,6 +60,11 @@
   #endif
 #endif
 
+#if defined(__linux__) && !defined(MSG_FASTOPEN)
+  #define MSG_FASTOPEN 0x20000000
+#endif
+
+
 /**
  * IPV6_ADD_MEMBERSHIP/IPV6_DROP_MEMBERSHIP may not be defined on OSX and AIX
  */
@@ -395,6 +400,73 @@ Java_sun_nio_ch_Net_connect0(JNIEnv *env, jclass clazz, jboolean preferIPv6,
     }
     return 1;
 }
+
+JNIEXPORT jint JNICALL
+Java_sun_nio_ch_Net_connectx0(JNIEnv *env, jclass clazz, jboolean preferIPv6, jobject fdo,
+                              jobject iao, jint port, jlong bufAddress, jint len)
+{
+    SOCKETADDRESS sa;
+    int sa_len = 0;
+    void *buf = (void *)jlong_to_ptr(bufAddress);
+
+    if (NET_InetAddressToSockaddr(env, iao, port, &sa, &sa_len, preferIPv6) != 0) {
+        return IOS_THROWN;
+    }
+
+#if defined(__linux__)
+
+    // TBD - what if sendto is interrupted (EINTR), is initial data lost?
+
+    ssize_t n = (int) sendto(fdval(env, fdo), buf, len, MSG_FASTOPEN, &sa.sa, sa_len);
+    if (n >= 0) {
+        if (n < len) {
+            JNU_ThrowIOException(env, "TFO data too large");
+            return IOS_THROWN;
+        }
+        return 1; // connected
+    }
+    if (errno == EINPROGRESS) {
+        JNU_ThrowIOException(env, "Connection not completed immediately, TFO data lost");
+        return IOS_THROWN;
+    }
+    return handleSocketError(env, errno);
+
+#elif defined(__APPLE__)
+
+    sa_endpoints_t endpoints;
+    struct iovec iov;
+    size_t nsent;
+
+	endpoints.sae_srcif = 0;
+	endpoints.sae_srcaddr = NULL;
+	endpoints.sae_srcaddrlen = 0;
+	endpoints.sae_dstaddr = (struct sockaddr *) &sa;
+	endpoints.sae_dstaddrlen = sa_len;
+
+	iov.iov_base = buf;
+	iov.iov_len = len;
+
+    // TBD - what if connectx is interrupted (EINTR), is nsent set?
+
+    int n = connectx(fdval(env, fdo), &endpoints, 0, CONNECT_DATA_IDEMPOTENT, &iov, 1, &nsent, NULL);
+    if ((n == 0 || errno == EINPROGRESS) && (nsent < (size_t)len)) {
+        JNU_ThrowIOException(env, "TFO data too large");
+        return IOS_THROWN;
+    }
+	if (n == 0) {
+	    return 1; // connected
+	}
+	if (errno == EINPROGRESS) {
+	    return IOS_UNAVAILABLE;
+	}
+	return handleSocketError(env, errno);
+
+#else
+    JNU_ThrowInternalError(env, "should not reach here");
+    return IOS_THROWN;
+#endif
+}
+
 
 JNIEXPORT jint JNICALL
 Java_sun_nio_ch_Net_accept(JNIEnv *env, jclass clazz, jobject fdo, jobject newfdo,

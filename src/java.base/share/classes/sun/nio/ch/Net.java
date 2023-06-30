@@ -584,8 +584,7 @@ public class Net {
         if (remote.isLinkLocalAddress()) {
             remote = IPAddressUtil.toScopedAddress(remote);
         }
-        boolean preferIPv6 = isIPv6Available() &&
-            (family != StandardProtocolFamily.INET);
+        boolean preferIPv6 = isIPv6Available() && (family != StandardProtocolFamily.INET);
         return connect0(preferIPv6, fd, remote, remotePort);
     }
 
@@ -601,6 +600,23 @@ public class Net {
                                        InetAddress remote,
                                        int remotePort)
         throws IOException;
+
+    static int connectx(ProtocolFamily family, FileDescriptor fd, SocketAddress remote,
+                        long dataAddress, int dataLen)
+        throws IOException
+    {
+        boolean preferIPv6 = isIPv6Available() && (family != StandardProtocolFamily.INET);
+        InetSocketAddress isa = (InetSocketAddress) remote;
+        return connectx0(preferIPv6, fd, isa.getAddress(), isa.getPort(), dataAddress, dataLen);
+    }
+
+    private static native int connectx0(boolean preferIPv6,
+                                        FileDescriptor fd,
+                                        InetAddress remote,
+                                        int remotePort,
+                                        long dataAddress,
+                                        int dataLen)
+            throws IOException;
 
     public static native int accept(FileDescriptor fd,
                                     FileDescriptor newfd,

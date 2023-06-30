@@ -68,6 +68,16 @@ class LinuxSocketOptions extends PlatformSocketOptions {
     }
 
     @Override
+    boolean tcpFastOpenSupported() {
+        return true;
+    }
+
+    @Override
+    boolean tcpFastOpenConnectDataSupported() {
+        return true;
+    }
+
+    @Override
     void setTcpkeepAliveProbes(int fd, final int value) throws SocketException {
         setTcpkeepAliveProbes0(fd, value);
     }
@@ -127,10 +137,16 @@ class LinuxSocketOptions extends PlatformSocketOptions {
         return new UnixDomainPrincipal(user, group);
     }
 
+    @Override
+    void setTcpFastOpen(int fd, int value) throws SocketException {
+        setTcpFastOpen0(fd, value);
+    }
+
     private static native void setTcpkeepAliveProbes0(int fd, int value) throws SocketException;
     private static native void setTcpKeepAliveTime0(int fd, int value) throws SocketException;
     private static native void setTcpKeepAliveIntvl0(int fd, int value) throws SocketException;
     private static native void setIpDontFragment0(int fd, boolean value, boolean isIPv6) throws SocketException;
+    private static native void setTcpFastOpen0(int fd, int value) throws SocketException;
     private static native int getTcpkeepAliveProbes0(int fd) throws SocketException;
     private static native int getTcpKeepAliveTime0(int fd) throws SocketException;
     private static native int getTcpKeepAliveIntvl0(int fd) throws SocketException;
