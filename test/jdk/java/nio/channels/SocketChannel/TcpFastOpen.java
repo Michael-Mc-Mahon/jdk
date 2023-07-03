@@ -43,19 +43,31 @@ class TcpFastOpen {
     /**
      * Basic test of TCP_FASTOPEN_CONNECT_DATA.
      */
+    @Test
     void testFastOpenConnectData() throws IOException {
-        try (ServerSocketChannel listener = ServerSocketChannel.open();
-             SocketChannel sc = SocketChannel.open()) {
-
+        try (ServerSocketChannel listener = ServerSocketChannel.open()) {
             InetAddress lb = InetAddress.getLoopbackAddress();
-            listener.bind(new InetSocketAddress(lb, 0));
+	    // must bind on macos before setting option
+            listener.bind(new InetSocketAddress(lb, 5789));
+            listener.setOption(TCP_FASTOPEN, 1);
+
+	    doTest(listener);
+	    doTest(listener);
+	}
+    }
+
+    void doTest(ServerSocketChannel listener) throws IOException {
+            SocketChannel sc = SocketChannel.open();
+	    sc.bind(null);
 
             String part1 = "hello";
             String part2 = "+greetings";
 
             ByteBuffer data = ByteBuffer.wrap(part1.getBytes(UTF_8));
+            //sc.setOption(TCP_FASTOPEN, 1);
             sc.setOption(TCP_FASTOPEN_CONNECT_DATA, data);
             sc.connect(listener.getLocalAddress());
+            //System.out.printf("get TCP_FASTOPEN %d\n", sc.getOption(TCP_FASTOPEN));
 
             ByteBuffer message = ByteBuffer.wrap(part2.getBytes(UTF_8));
             sc.write(message);
@@ -74,7 +86,5 @@ class TcpFastOpen {
             buf.flip();
             String actual = UTF_8.decode(buf).toString();
             assertEquals(expected, actual);
-        }
     }
-
 }

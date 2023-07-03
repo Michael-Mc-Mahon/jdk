@@ -255,7 +255,8 @@ JNIEXPORT jboolean JNICALL Java_jdk_net_MacOSXSocketOptions_getIpDontFragment0
 
 JNIEXPORT void JNICALL Java_jdk_net_MacOSXSocketOptions_setTcpFastOpen0
 (JNIEnv *env, jobject unused, jint fd, jint optval) {
-    int arg = (optval > 0) ? 1 : 0;
+    //int arg = (optval > 0) ? 1 : 0;
+    int arg = (int)(optval);
     int rv = setsockopt(fd, IPPROTO_TCP, TCP_FASTOPEN, (char*)&arg, sizeof(arg));
     handleError(env, (jint) rv, "set option TCP_FASTOPEN failed");
 }
