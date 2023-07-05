@@ -402,6 +402,19 @@ Java_sun_nio_ch_Net_connect0(JNIEnv *env, jclass clazz, jboolean preferIPv6,
 }
 
 JNIEXPORT jint JNICALL
+Java_sun_nio_ch_Net_isConnected(JNIEnv *env, jclass clazz, jobject fdo)
+{
+    struct sockaddr addr;
+    socklen_t len = sizeof(addr);
+    int n = getpeername(fdval(env, fdo), &addr, &len);
+    return n == 0 ? 1 : 0;
+}
+
+/**
+ * Returns number of bytes sent if no error (should be either 0 or len)
+ * Use isConnected to determine whether socket is connected or not
+ */
+JNIEXPORT jint JNICALL
 Java_sun_nio_ch_Net_connectx0(JNIEnv *env, jclass clazz, jboolean preferIPv6, jobject fdo,
                               jobject iao, jint port, jlong bufAddress, jint len)
 {
@@ -418,18 +431,22 @@ Java_sun_nio_ch_Net_connectx0(JNIEnv *env, jclass clazz, jboolean preferIPv6, jo
     // TBD - what if sendto is interrupted (EINTR), is initial data lost?
 
     ssize_t n = (int) sendto(fdval(env, fdo), buf, len, MSG_FASTOPEN, &sa.sa, sa_len);
-    if (n >= 0) {
-        if (n < len) {
+    if (n < 0) {
+        if (errno == EMSGSIZE) {
             JNU_ThrowIOException(env, "TFO data too large");
             return IOS_THROWN;
+        } else if (errno == EINPROGRESS) {
+            /* non-blocking TCP fast connect
+             * where no cookie is available. This means
+             * zero bytes were written and user needs
+             * to write the data after the socket is connected
+             */
+            return 0;
+        } else {
+            return handleSocketError(env, errno);
         }
-        return 1; // connected
     }
-    if (errno == EINPROGRESS) {
-        JNU_ThrowIOException(env, "Connection not completed immediately, TFO data lost");
-        return IOS_THROWN;
-    }
-    return handleSocketError(env, errno);
+    return n; // fast open bytes written or queued (cookie available)
 
 #elif defined(__APPLE__)
 
@@ -437,30 +454,34 @@ Java_sun_nio_ch_Net_connectx0(JNIEnv *env, jclass clazz, jboolean preferIPv6, jo
     struct iovec iov;
     size_t nsent;
 
-	endpoints.sae_srcif = 0;
-	endpoints.sae_srcaddr = NULL;
-	endpoints.sae_srcaddrlen = 0;
-	endpoints.sae_dstaddr = (struct sockaddr *) &sa;
-	endpoints.sae_dstaddrlen = sa_len;
+    endpoints.sae_srcif = 0;
+    endpoints.sae_srcaddr = NULL;
+    endpoints.sae_srcaddrlen = 0;
+    endpoints.sae_dstaddr = (struct sockaddr *) &sa;
+    endpoints.sae_dstaddrlen = sa_len;
 
-	iov.iov_base = buf;
-	iov.iov_len = len;
+    iov.iov_base = buf;
+    iov.iov_len = len;
 
     // TBD - what if connectx is interrupted (EINTR), is nsent set?
 
     int n = connectx(fdval(env, fdo), &endpoints, 0, CONNECT_DATA_IDEMPOTENT, &iov, 1, &nsent, NULL);
-    if ((n == 0 || errno == EINPROGRESS) && (nsent < (size_t)len)) {
-        JNU_ThrowIOException(env, "TFO data too large");
-        return IOS_THROWN;
+    if (n < 0) {
+        if (errno == EMSGSIZE) {
+            JNU_ThrowIOException(env, "TFO data too large");
+            return IOS_THROWN;
+        } else if (errno == EINPROGRESS) {
+            /* non-blocking TCP fast connect
+             * where no cookie is available. This means
+             * zero bytes were written and user needs
+             * to write the data after the socket is connected
+             */
+            return 0;
+        } else {
+            return handleSocketError(env, errno);
+        }
     }
-	if (n == 0) {
-	    return 1; // connected
-	}
-	if (errno == EINPROGRESS) {
-	    return IOS_UNAVAILABLE;
-	}
-	return handleSocketError(env, errno);
-
+    return n; // fast open bytes written or queued (cookie available)
 #else
     JNU_ThrowInternalError(env, "should not reach here");
     return IOS_THROWN;

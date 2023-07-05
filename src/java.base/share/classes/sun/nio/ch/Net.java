@@ -524,6 +524,8 @@ public class Net {
 
     private static native boolean canUseIPv6OptionsWithIPv4LocalAddress0();
 
+    static native int isConnected(FileDescriptor fd);
+
     static FileDescriptor socket(boolean stream) throws IOException {
         return socket(UNSPEC, stream);
     }

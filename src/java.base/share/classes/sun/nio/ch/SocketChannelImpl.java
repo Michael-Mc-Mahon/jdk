@@ -940,7 +940,11 @@ class SocketChannelImpl
                 Util.offerFirstTemporaryDirectBuffer(bb);
             }
         }
-        return n;
+        if (n > 0) {
+            // consume any data that was sent
+            data.position(data.position()+n);
+        }
+        return Net.isConnected(fd);
     }
 
     @Override
