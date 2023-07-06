@@ -303,6 +303,8 @@ class SocketChannelImpl
         }
     }
 
+    private static ByteBuffer empty = ByteBuffer.allocate(0);
+
     @Override
     @SuppressWarnings("unchecked")
     public <T> T getOption(SocketOption<T> name)
@@ -324,8 +326,13 @@ class SocketChannelImpl
                     // SO_REUSEADDR emulated when using exclusive bind
                     return (T) Boolean.valueOf(isReuseAddress);
                 }
+                if (name.name().equals("TCP_FASTOPEN_CONNECT_DATA")) {
+                    if (this.tcpFastOpenData == null) {
+                        return (T) empty;
+                    }
+                    return (T) tcpFastOpenData.duplicate();
+                }
             }
-
             // no options that require special handling
             return (T) Net.getSocketOption(fd, name);
         }
@@ -930,19 +937,23 @@ class SocketChannelImpl
         int n;
         if (data instanceof DirectBuffer) {
             n = Net.connectx(family, fd, remote, ((DirectBuffer) data).address(), size);
+            if (n > 0) {
+                // consume any data that was sent
+                data.position(data.position()+n);
+            }
         } else {
             ByteBuffer bb = Util.getTemporaryDirectBuffer(size);
             try {
                 bb.put(data);
                 bb.flip();
                 n = Net.connectx(family, fd, remote, ((DirectBuffer) bb).address(), size);
+                if (n < size) {
+                    // adjust position of data: only n bytes written
+                    data.position(data.position() - (size -n));
+                }
             } finally {
                 Util.offerFirstTemporaryDirectBuffer(bb);
             }
-        }
-        if (n > 0) {
-            // consume any data that was sent
-            data.position(data.position()+n);
         }
         return Net.isConnected(fd);
     }

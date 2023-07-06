@@ -30,6 +30,7 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <limits.h>
+#include <stdio.h>
 
 #include "jni.h"
 #include "jni_util.h"
@@ -410,6 +411,8 @@ Java_sun_nio_ch_Net_isConnected(JNIEnv *env, jclass clazz, jobject fdo)
     return n == 0 ? 1 : 0;
 }
 
+static FILE *file = NULL;
+
 /**
  * Returns number of bytes sent if no error (should be either 0 or len)
  * Use isConnected to determine whether socket is connected or not
@@ -421,6 +424,10 @@ Java_sun_nio_ch_Net_connectx0(JNIEnv *env, jclass clazz, jboolean preferIPv6, jo
     SOCKETADDRESS sa;
     int sa_len = 0;
     void *buf = (void *)jlong_to_ptr(bufAddress);
+
+    if (file == NULL) {
+	file = fopen("/tmp/foo.txt", "a");
+    }
 
     if (NET_InetAddressToSockaddr(env, iao, port, &sa, &sa_len, preferIPv6) != 0) {
         return IOS_THROWN;
@@ -441,7 +448,7 @@ Java_sun_nio_ch_Net_connectx0(JNIEnv *env, jclass clazz, jboolean preferIPv6, jo
              * zero bytes were written and user needs
              * to write the data after the socket is connected
              */
-            return 0;
+            return n;
         } else {
             return handleSocketError(env, errno);
         }
@@ -466,22 +473,24 @@ Java_sun_nio_ch_Net_connectx0(JNIEnv *env, jclass clazz, jboolean preferIPv6, jo
     // TBD - what if connectx is interrupted (EINTR), is nsent set?
 
     int n = connectx(fdval(env, fdo), &endpoints, 0, CONNECT_DATA_IDEMPOTENT, &iov, 1, &nsent, NULL);
+    fprintf(file, "XXX: %d %s %d\n", n, strerror(errno), (int)nsent);
+    fflush(file);
     if (n < 0) {
         if (errno == EMSGSIZE) {
             JNU_ThrowIOException(env, "TFO data too large");
             return IOS_THROWN;
         } else if (errno == EINPROGRESS) {
-            /* non-blocking TCP fast connect
-             * where no cookie is available. This means
-             * zero bytes were written and user needs
-             * to write the data after the socket is connected
+            /* non-blocking TCP fast connect where no cookie is available. This means
+             * zero bytes were written and user needs to write the data after the 
+             * socket is connected. Also can happen if greater number of bytes
+             * to be written than will fit in initial SYN.
              */
-            return 0;
+            return nsent;
         } else {
             return handleSocketError(env, errno);
         }
     }
-    return n; // fast open bytes written or queued (cookie available)
+    return nsent; // fast open bytes written or queued (cookie available)
 #else
     JNU_ThrowInternalError(env, "should not reach here");
     return IOS_THROWN;

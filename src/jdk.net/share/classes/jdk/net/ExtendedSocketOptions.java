@@ -201,14 +201,48 @@ public final class ExtendedSocketOptions {
             ("SO_PEERCRED", UnixDomainPrincipal.class);
 
     /**
-     * TCP_FASTOPEN. On Linux the value of this socket option is maximum length of
-     * pending SYNs. On macOS a value of 1 enables fast open.
+     * TCP_FASTOPEN. Enables fast open on a server socket channel.
+     * Setting the option to any positive integer value enables the option.
+     * The value zero disables it. Negative values will result in {@link 
+     * IllegalArgumentException}. On some platforms the numeric value is a 
+     * hint representing the requested maximum queue length of incoming 
+     * fast open connections (analogous to the listen queue).
+     * 
+     * Fast open data is received by accepted sockets in the normal way.
      */
     public static final SocketOption<Integer> TCP_FASTOPEN =
             new ExtSocketOption<Integer>("TCP_FASTOPEN", Integer.class);
 
     /**
-     * TCP_FASTOPEN_CONNECT with data to include with SYN.
+     * Requests the TCP_FASTOPEN socket option for a client connection.
+     *
+     * <p> Setting the option requests TCP fast open where the given ByteBuffer  
+     * contains the data to be sent with the initial SYN. If the socket is in
+     * blocking mode, then the data will have been sent when connect returns. If a 
+     * a fast open cookie is not present, then the connection is opened in
+     * the normal mode, and connect returns after the full handshake and the buffer
+     * has been written. Subsequent connections to the same destination
+     * should be opened in fast open mode. 
+     * <p> If the socket is in non-blocking mode then the behavior is slightly
+     * different depending on the presence of a fast open cookie. If no cookie
+     * is present, then the data write does not occur and the buffer must be written
+     * by the application in the normal way, after the socket is connected.
+     * If a cookie is present (which should be the case in subsequent connection
+     * attempts), then the buffer is written along with the initial SYN.
+     * <p> The two non-blocking cases can be distinguished by getting the value
+     * of this option after connect returns. This returns a copy of the
+     * original supplied ByteBuffer with any bytes sent already consumed.
+     * If {@link ByteBuffer.remaining()} returns a value greater than zero, 
+     * then the remaining bytes in the buffer should be written to the channel
+     * in the normal way before any other data.
+     * <p> Getting the socket option prior to connect being called on the socket
+     * will return an empty ByteBuffer if the option has not been set, or a copy of
+     * the unsent ByteBuffer if the option was set.
+     * <p> Not all platforms support this option in non-blocking mode. In that case,
+     * {@link IOException} will be thrown at connect time.
+     * <p> Note also that there will generally be a platform specific message size
+     * limit for fast open data. Exceeding the limit will cause an exception to be
+     * thrown at connect time.
      */
     public static final SocketOption<ByteBuffer> TCP_FASTOPEN_CONNECT_DATA =
             new ExtSocketOption<>("TCP_FASTOPEN_CONNECT_DATA", ByteBuffer.class);
@@ -421,7 +455,7 @@ public final class ExtendedSocketOptions {
         throw new UnsupportedOperationException();
     }
 
-    private static int getTcpFastOpenConnectData(FileDescriptor fd) throws SocketException {
+    private static ByteBuffer getTcpFastOpenConnectData(FileDescriptor fd) throws SocketException {
         throw new UnsupportedOperationException();
     }
 
@@ -513,6 +547,10 @@ public final class ExtendedSocketOptions {
         }
 
         void setTcpFastOpen(int fd, int value) throws SocketException {
+            throw new UnsupportedOperationException();
+        }
+
+        ByteBuffer getTcpFastOpenConnectData(int fd) throws SocketException {
             throw new UnsupportedOperationException();
         }
 

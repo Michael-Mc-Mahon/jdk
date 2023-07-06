@@ -29,12 +29,17 @@
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.StandardSocketOptions;
 import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+
 import static java.nio.charset.StandardCharsets.*;
 import static jdk.net.ExtendedSocketOptions.*;
 
+import jdk.net.ExtendedSocketOptions;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -44,23 +49,24 @@ class TcpFastOpen {
      * Basic test of TCP_FASTOPEN_CONNECT_DATA.
      */
     @Test
-    void testFastOpenConnectData() throws IOException {
+    void testFastOpenConnectData() throws IOException, InterruptedException {
         try (ServerSocketChannel listener = ServerSocketChannel.open()) {
             InetAddress lb = InetAddress.getLoopbackAddress();
-	    // must bind on macos before setting option
+            // must bind on macos before setting option
             listener.bind(new InetSocketAddress(lb, 5789));
             listener.setOption(TCP_FASTOPEN, 1);
 
-	    doTest(listener);
-	    doTest(listener);
-	}
+            doTest(listener);
+            doTest(listener);
+        }
     }
 
-    void doTest(ServerSocketChannel listener) throws IOException {
+    void doTest(ServerSocketChannel listener) throws IOException, InterruptedException {
             SocketChannel sc = SocketChannel.open();
-	    sc.bind(null);
+            sc.bind(null);
+            sc.configureBlocking(false);
 
-            String part1 = "hello";
+            String part1 = new StringBuilder().repeat("X", 50000).toString();
             String part2 = "+greetings";
 
             ByteBuffer data = ByteBuffer.wrap(part1.getBytes(UTF_8));
@@ -69,12 +75,19 @@ class TcpFastOpen {
             sc.connect(listener.getLocalAddress());
             //System.out.printf("get TCP_FASTOPEN %d\n", sc.getOption(TCP_FASTOPEN));
 
+            Thread.sleep(Duration.ofSeconds(2));
+            sc.finishConnect();
+            System.out.println("YYY: " + sc.getOption(StandardSocketOptions.SO_SNDBUF));
+            ByteBuffer remaining = sc.getOption(TCP_FASTOPEN_CONNECT_DATA);
+            while (remaining.remaining() > 0) {
+                sc.write(remaining);
+            }
             ByteBuffer message = ByteBuffer.wrap(part2.getBytes(UTF_8));
             sc.write(message);
 
             String expected = part1 + part2;
 
-            ByteBuffer buf = ByteBuffer.allocateDirect(100);
+            ByteBuffer buf = ByteBuffer.allocateDirect(1000000);
             int nread = 0;
             try (SocketChannel peer = listener.accept()) {
                 while (nread < expected.length()) {
