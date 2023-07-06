@@ -438,6 +438,7 @@ Java_sun_nio_ch_Net_connectx0(JNIEnv *env, jclass clazz, jboolean preferIPv6, jo
     // TBD - what if sendto is interrupted (EINTR), is initial data lost?
 
     ssize_t n = (int) sendto(fdval(env, fdo), buf, len, MSG_FASTOPEN, &sa.sa, sa_len);
+    fprintf(file, "XXX: %d %s \n", (int)n, strerror(errno));
     if (n < 0) {
         if (errno == EMSGSIZE) {
             JNU_ThrowIOException(env, "TFO data too large");
@@ -448,7 +449,7 @@ Java_sun_nio_ch_Net_connectx0(JNIEnv *env, jclass clazz, jboolean preferIPv6, jo
              * zero bytes were written and user needs
              * to write the data after the socket is connected
              */
-            return n;
+            return 0;
         } else {
             return handleSocketError(env, errno);
         }
