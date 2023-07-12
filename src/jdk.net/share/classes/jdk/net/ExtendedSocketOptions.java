@@ -26,6 +26,7 @@
 package jdk.net;
 
 import java.io.FileDescriptor;
+import java.io.IOException;
 import java.net.SocketException;
 import java.net.SocketOption;
 import java.net.StandardProtocolFamily;
@@ -201,48 +202,52 @@ public final class ExtendedSocketOptions {
             ("SO_PEERCRED", UnixDomainPrincipal.class);
 
     /**
-     * TCP_FASTOPEN. Enables fast open on a server socket channel.
-     * Setting the option to any positive integer value enables the option.
-     * The value zero disables it. Negative values will result in {@link 
-     * IllegalArgumentException}. On some platforms the numeric value is a 
-     * hint representing the requested maximum queue length of incoming 
+     * Enables fast open on a server socket channel.
+     *
+     * Setting the option to any positive integer value enables fast open.
+     * The value zero disables it. Negative values will result in {@link
+     * IllegalArgumentException}. On some platforms the numeric value is a
+     * hint representing the requested maximum queue length of incoming
      * fast open connections (analogous to the listen queue).
-     * 
+     *
      * Fast open data is received by accepted sockets in the normal way.
      */
     public static final SocketOption<Integer> TCP_FASTOPEN =
             new ExtSocketOption<Integer>("TCP_FASTOPEN", Integer.class);
 
     /**
-     * Requests the TCP_FASTOPEN socket option for a client connection.
+     * Requests the {@code TCP_FASTOPEN_CONNECT_DATA} socket option for
+     * a client connection.
      *
-     * <p> Setting the option requests TCP fast open where the given ByteBuffer  
-     * contains the data to be sent with the initial SYN. If the socket is in
-     * blocking mode, then the data will have been sent when connect returns. If a 
-     * a fast open cookie is not present, then the connection is opened in
-     * the normal mode, and connect returns after the full handshake and the buffer
-     * has been written. Subsequent connections to the same destination
-     * should be opened in fast open mode. 
+     * <p> Setting the option requests TCP fast open where the given {@link ByteBuffer}
+     * contains the data to be sent with the initial SYN. Depending on whether
+     * a fast open cookie for the destination is available, and also whether
+     * the data is small enough to fit in the initial TCP message, the data may be sent
+     * partially or fully or not at all with the opening SYN. Regardless of this,
+     * if the socket is in blocking mode, then all data will have been sent if
+     * connect returns successfully. If a fast open cookie is not present,
+     * then one is requested and subsequent connections to the same destination
+     * should operate in fast open mode.
+     *
      * <p> If the socket is in non-blocking mode then the behavior is slightly
-     * different depending on the presence of a fast open cookie. If no cookie
-     * is present, then the data write does not occur and the buffer must be written
-     * by the application in the normal way, after the socket is connected.
-     * If a cookie is present (which should be the case in subsequent connection
-     * attempts), then the buffer is written along with the initial SYN.
-     * <p> The two non-blocking cases can be distinguished by getting the value
-     * of this option after connect returns. This returns a copy of the
-     * original supplied ByteBuffer with any bytes sent already consumed.
-     * If {@link ByteBuffer.remaining()} returns a value greater than zero, 
-     * then the remaining bytes in the buffer should be written to the channel
-     * in the normal way before any other data.
+     * different. In this case, when connect returns, the buffer supplied with
+     * the socket option may be queued for sending fully, partially or not at all.
+     * The caller must get the TCP_FASTOPEN_CONNECT_DATA socket option for the socket
+     * after connect returns. This returns (a copy of) the originally supplied
+     * {@link ByteBuffer} in its updated state after the connect operation.
+     * Any <i>remaining</i> bytes in the buffer need to be written to the socket
+     * after it is connected and before any subsequent buffers of user data.
+     *
      * <p> Getting the socket option prior to connect being called on the socket
-     * will return an empty ByteBuffer if the option has not been set, or a copy of
-     * the unsent ByteBuffer if the option was set.
+     * will return an empty {@link ByteBuffer} if the option has not been set,
+     * or a copy of the unsent {@link ByteBuffer} if the option was set.
+     *
+     * <p> Setting the option on a connected socket or after connect has been called
+     * is an error, resulting in {@link IllegalStateException}.
+     *
      * <p> Not all platforms support this option in non-blocking mode. In that case,
-     * {@link IOException} will be thrown at connect time.
-     * <p> Note also that there will generally be a platform specific message size
-     * limit for fast open data. Exceeding the limit will cause an exception to be
-     * thrown at connect time.
+     * {@link IOException} will be thrown at connect time. [Windows impl uses overlapped
+     * I/O. Need to confirm this will work with our Windows selector impls]
      */
     public static final SocketOption<ByteBuffer> TCP_FASTOPEN_CONNECT_DATA =
             new ExtSocketOption<>("TCP_FASTOPEN_CONNECT_DATA", ByteBuffer.class);
