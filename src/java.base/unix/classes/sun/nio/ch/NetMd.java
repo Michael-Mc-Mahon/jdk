@@ -26,15 +26,27 @@
 package sun.nio.ch;
 
 import java.io.FileDescriptor;
+import java.io.IOException;
 import java.net.InetAddress;
 
 class NetMd {
 
-    static int connectx(boolean preferIPv6, FileDescriptor fd, boolean isBlocking, InetAddress addr, int port) {
-	return connectx0(preferIPv6, fd, isBlocking, addr, port);
+    static int connectx(boolean preferIPv6, FileDescriptor fd, boolean isBlocking,
+                        InetAddress addr, int port, long dataAddress,
+                        int dataLen) throws IOException
+    {
+        return connectx0(preferIPv6, fd, isBlocking, addr, port, dataAddress, dataLen);
     }
+
 
     static void finishConnectx(FileDescriptor fd) {}
 
-    private static native int connectx0(boolean preferIPv6, FileDescriptor fd, boolean isBlocking, InetAddress addr, int port);
+    private static native int connectx0(boolean preferIPv6,
+                                                FileDescriptor fd,
+                                                boolean isBlocking,
+                                                InetAddress remote,
+                                                int remotePort,
+                                                long dataAddress,
+                                                int dataLen) throws IOException;
+
 }

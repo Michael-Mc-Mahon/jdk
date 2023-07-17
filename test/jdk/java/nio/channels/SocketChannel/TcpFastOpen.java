@@ -31,7 +31,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.StandardSocketOptions;
 import java.nio.ByteBuffer;
-import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.*;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -45,28 +45,32 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class TcpFastOpen {
 
+    public static void main(String[] args) throws Exception {
+	testFastOpenConnectData();
+    }
+
     /**
      * Basic test of TCP_FASTOPEN_CONNECT_DATA.
      */
     @Test
-    void testFastOpenConnectData() throws IOException, InterruptedException {
+    static void testFastOpenConnectData() throws IOException, InterruptedException {
         try (ServerSocketChannel listener = ServerSocketChannel.open()) {
             InetAddress lb = InetAddress.getLoopbackAddress();
             // must bind on macos before setting option
             listener.bind(new InetSocketAddress(lb, 5789));
             listener.setOption(TCP_FASTOPEN, 1);
 
-            doTest(listener);
-            doTest(listener);
+            doTest(listener, true);
+            doTest(listener, false);
         }
     }
 
-    void doTest(ServerSocketChannel listener) throws IOException, InterruptedException {
+    static void doTest(ServerSocketChannel listener, boolean block) throws IOException, InterruptedException {
             SocketChannel sc = SocketChannel.open();
             sc.bind(null);
-            sc.configureBlocking(false);
+            sc.configureBlocking(block);
 
-            String part1 = new StringBuilder().repeat("X", 50000).toString();
+            String part1 = new StringBuilder().repeat("X", 50).toString();
             String part2 = "+greetings";
 
             ByteBuffer data = ByteBuffer.wrap(part1.getBytes(UTF_8));
@@ -75,10 +79,15 @@ class TcpFastOpen {
             sc.connect(listener.getLocalAddress());
             //System.out.printf("get TCP_FASTOPEN %d\n", sc.getOption(TCP_FASTOPEN));
 
-            Thread.sleep(Duration.ofSeconds(2));
+	    if (!sc.isBlocking()) {
+	        Selector sel = Selector.open();
+	        sc.register(sel, SelectionKey.OP_CONNECT, null);
+	        int t = sel.select();
+	    }
+            //Thread.sleep(Duration.ofSeconds(2));
             sc.finishConnect();
-            System.out.println("YYY: " + sc.getOption(StandardSocketOptions.SO_SNDBUF));
             ByteBuffer remaining = sc.getOption(TCP_FASTOPEN_CONNECT_DATA);
+	    System.out.printf("returned BB = %s\n", remaining);
             while (remaining.remaining() > 0) {
                 sc.write(remaining);
             }
@@ -99,5 +108,16 @@ class TcpFastOpen {
             buf.flip();
             String actual = UTF_8.decode(buf).toString();
             assertEquals(expected, actual);
+    }
+
+    static void assertTrue(boolean b) {
+	if (!b)
+		throw new RuntimeException();
+    }
+
+    static void assertEquals(Object o1, Object o2) {
+	if (!o1.equals(o2)) {
+		throw new RuntimeException("");
+	}
     }
 }

@@ -96,11 +96,11 @@ class NetMd {
     }
 
     static native int connectx0(boolean preferIPv6,
-                               FileDescriptor fd,
-                               boolean isBlocking,
-                              InetAddress remote,
-                              long ol,
-                               int remotePort,
-                               long dataAddress,
-                              int dataLen) throws IOException;
+                                FileDescriptor fd,
+                                boolean isBlocking,
+                                InetAddress remote,
+                                long ol,
+                                int remotePort,
+                                long dataAddress,
+                                int dataLen) throws IOException;
 }

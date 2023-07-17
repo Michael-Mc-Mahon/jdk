@@ -60,10 +60,6 @@ Java_sun_nio_ch_NetMd_connectx0(JNIEnv *env, jclass clazz, jboolean preferIPv6, 
     int sa_len = 0;
     void *buf = (void *)jlong_to_ptr(bufAddress);
 
-    if (file == NULL) {
-	file = fopen("/tmp/foo.txt", "a");
-    }
-
     if (NET_InetAddressToSockaddr(env, iao, port, &sa, &sa_len, preferIPv6) != 0) {
         return IOS_THROWN;
     }
@@ -73,7 +69,6 @@ Java_sun_nio_ch_NetMd_connectx0(JNIEnv *env, jclass clazz, jboolean preferIPv6, 
     // TBD - what if sendto is interrupted (EINTR), is initial data lost?
 
     ssize_t n = (int) sendto(fdval(env, fdo), buf, len, MSG_FASTOPEN, &sa.sa, sa_len);
-    fprintf(file, "XXX: %d %s \n", (int)n, strerror(errno));
     if (n < 0) {
         if (errno == EMSGSIZE) {
             JNU_ThrowIOException(env, "TFO data too large");
@@ -109,8 +104,6 @@ Java_sun_nio_ch_NetMd_connectx0(JNIEnv *env, jclass clazz, jboolean preferIPv6, 
     // TBD - what if connectx is interrupted (EINTR), is nsent set?
 
     int n = connectx(fdval(env, fdo), &endpoints, 0, CONNECT_DATA_IDEMPOTENT, &iov, 1, &nsent, NULL);
-    fprintf(file, "XXX: %d %s %d\n", n, strerror(errno), (int)nsent);
-    fflush(file);
     if (n < 0) {
         if (errno == EMSGSIZE) {
             JNU_ThrowIOException(env, "TFO data too large");
