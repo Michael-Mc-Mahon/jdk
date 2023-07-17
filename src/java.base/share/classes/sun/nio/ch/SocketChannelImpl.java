@@ -936,7 +936,7 @@ class SocketChannelImpl
         int size = (pos <= lim ? lim - pos : 0);
         int n;
         if (data instanceof DirectBuffer) {
-            n = Net.connectx(family, fd, remote, ((DirectBuffer) data).address(), size);
+            n = Net.connectx(family, fd, remote, isBlocking(), ((DirectBuffer) data).address(), size);
             if (n > 0) {
                 // consume any data that was sent
                 data.position(data.position()+n);
@@ -946,7 +946,7 @@ class SocketChannelImpl
             try {
                 bb.put(data);
                 bb.flip();
-                n = Net.connectx(family, fd, remote, ((DirectBuffer) bb).address(), size);
+                n = Net.connectx(family, fd, remote, isBlocking(), ((DirectBuffer) bb).address(), size);
                 if (n < size) {
                     // adjust position of data: only n bytes written
                     data.position(data.position() - (size -n));
@@ -1077,6 +1077,9 @@ class SocketChannelImpl
                         }
                         connected = polled && isOpen();
                     } finally {
+                        if (!blocking && tcpFastOpenData != null) {
+                            Net.finishConnectx(fd);
+                        }
                         endFinishConnect(blocking, connected);
                     }
                     assert (blocking && connected) ^ !blocking;

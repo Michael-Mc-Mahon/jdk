@@ -51,8 +51,24 @@ class WindowsSocketOptions extends PlatformSocketOptions {
         return getIpDontFragment0(fd, isIPv6);
     }
 
+    @Override
+    boolean tcpFastOpenSupported() {
+        return true;
+    }
+
+    @Override
+    boolean tcpFastOpenConnectDataSupported() {
+        return true;
+    }
+
+    @Override
+    void setTcpFastOpen(int fd, int value) throws SocketException {
+        setTcpFastOpen0(fd, value);
+    }
+
     private static native void setIpDontFragment0(int fd, boolean value, boolean isIPv6) throws SocketException;
     private static native boolean getIpDontFragment0(int fd, boolean isIPv6) throws SocketException;
+    private static native void setTcpFastOpen0(int fd, int value) throws SocketException;
 
     static {
         if (System.getSecurityManager() == null) {

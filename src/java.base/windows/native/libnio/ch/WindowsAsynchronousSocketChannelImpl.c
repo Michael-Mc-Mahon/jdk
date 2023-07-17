@@ -33,60 +33,9 @@
 #include "nio.h"
 #include "nio_util.h"
 #include "net_util.h"
+#include "extfunctionPtr.h"
 
 #include "sun_nio_ch_WindowsAsynchronousSocketChannelImpl.h"
-
-#ifndef WSAID_CONNECTEX
-#define WSAID_CONNECTEX {0x25a207b9,0xddf3,0x4660,{0x8e,0xe9,0x76,0xe5,0x8c,0x74,0x06,0x3e}}
-#endif
-
-#ifndef SO_UPDATE_CONNECT_CONTEXT
-#define SO_UPDATE_CONNECT_CONTEXT 0x7010
-#endif
-
-typedef BOOL (PASCAL *ConnectEx_t)
-(
-    SOCKET s,
-    const struct sockaddr* name,
-    int namelen,
-    PVOID lpSendBuffer,
-    DWORD dwSendDataLength,
-    LPDWORD lpdwBytesSent,
-    LPOVERLAPPED lpOverlapped
-);
-
-static ConnectEx_t ConnectEx_func;
-
-
-JNIEXPORT void JNICALL
-Java_sun_nio_ch_WindowsAsynchronousSocketChannelImpl_initIDs(JNIEnv* env, jclass this) {
-    GUID GuidConnectEx = WSAID_CONNECTEX;
-    SOCKET s;
-    int rv;
-    DWORD dwBytes;
-
-    s = socket(AF_INET, SOCK_STREAM, 0);
-    if (s == INVALID_SOCKET && WSAGetLastError() == WSAEAFNOSUPPORT) {
-        /* IPv4 unavailable... try IPv6 instead */
-        s = socket(AF_INET6, SOCK_STREAM, 0);
-    }
-    if (s == INVALID_SOCKET) {
-        JNU_ThrowIOExceptionWithLastError(env, "socket failed");
-        return;
-    }
-    rv = WSAIoctl(s,
-                  SIO_GET_EXTENSION_FUNCTION_POINTER,
-                  (LPVOID)&GuidConnectEx,
-                  sizeof(GuidConnectEx),
-                  &ConnectEx_func,
-                  sizeof(ConnectEx_func),
-                  &dwBytes,
-                  NULL,
-                  NULL);
-    if (rv != 0)
-        JNU_ThrowIOExceptionWithLastError(env, "WSAIoctl failed");
-    closesocket(s);
-}
 
 JNIEXPORT jint JNICALL
 Java_sun_nio_ch_WindowsAsynchronousSocketChannelImpl_connect0(JNIEnv* env, jclass this,

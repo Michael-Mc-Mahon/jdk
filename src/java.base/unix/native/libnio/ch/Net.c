@@ -419,7 +419,8 @@ static FILE *file = NULL;
  */
 JNIEXPORT jint JNICALL
 Java_sun_nio_ch_Net_connectx0(JNIEnv *env, jclass clazz, jboolean preferIPv6, jobject fdo,
-                              jobject iao, jint port, jlong bufAddress, jint len)
+                              jboolean unused, jobject iao, jint port,
+                              jlong bufAddress, jint len)
 {
     SOCKETADDRESS sa;
     int sa_len = 0;
@@ -1075,3 +1076,8 @@ Java_sun_nio_ch_Net_sendOOB(JNIEnv* env, jclass this, jobject fdo, jbyte b)
     return convertReturnVal(env, n, JNI_FALSE);
 }
 
+JNIEXPORT void JNICALL
+Java_sun_nio_ch_Net_initFunctionPtrs(JNIEnv *env, jclass clazz)
+{
+    // No op
+}

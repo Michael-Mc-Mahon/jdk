@@ -103,3 +103,8 @@ JNIEXPORT jboolean JNICALL Java_jdk_net_WindowsSocketOptions_getIpDontFragment0
     }
 }
 
+JNIEXPORT void JNICALL Java_jdk_net_WindowsSocketOptions_setTcpFastOpen0
+(JNIEnv *env, jobject unused, jint fd, jint optval) {
+    int rv = setsockopt(fd, IPPROTO_TCP, TCP_FASTOPEN, (char *)&optval, sizeof (optval));
+    handleError(env, (jint) rv, "set option TCP_FASTOPEN failed");
+}

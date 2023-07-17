@@ -526,6 +526,8 @@ public class Net {
 
     static native int isConnected(FileDescriptor fd);
 
+    static native void initFunctionPtrs();
+
     static FileDescriptor socket(boolean stream) throws IOException {
         return socket(UNSPEC, stream);
     }
@@ -604,21 +606,18 @@ public class Net {
         throws IOException;
 
     static int connectx(ProtocolFamily family, FileDescriptor fd, SocketAddress remote,
-                        long dataAddress, int dataLen)
+                        boolean isBlocking, long dataAddress, int dataLen)
         throws IOException
     {
         boolean preferIPv6 = isIPv6Available() && (family != StandardProtocolFamily.INET);
         InetSocketAddress isa = (InetSocketAddress) remote;
-        return connectx0(preferIPv6, fd, isa.getAddress(), isa.getPort(), dataAddress, dataLen);
+        return NetMd.connectx(preferIPv6, fd, isBlocking, isa.getAddress(), isa.getPort(),
+                         dataAddress, dataLen);
     }
 
-    private static native int connectx0(boolean preferIPv6,
-                                        FileDescriptor fd,
-                                        InetAddress remote,
-                                        int remotePort,
-                                        long dataAddress,
-                                        int dataLen)
-            throws IOException;
+    static void finishConnectx(FileDescriptor fd) {
+        NetMd.finishConnectx(fd);
+    }
 
     public static native int accept(FileDescriptor fd,
                                     FileDescriptor newfd,
@@ -833,6 +832,7 @@ public class Net {
     static {
         IOUtil.load();
         initIDs();
+        initFunctionPtrs();
 
         POLLIN     = pollinValue();
         POLLOUT    = polloutValue();

@@ -942,6 +942,6 @@ class WindowsAsynchronousSocketChannelImpl
 
     static {
         IOUtil.load();
-        initIDs();
+        Net.initFunctionPtrs();
     }
 }

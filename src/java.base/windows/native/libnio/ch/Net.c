@@ -33,6 +33,7 @@
 #include "nio.h"
 #include "nio_util.h"
 #include "net_util.h"
+#include "extfunctionPtr.h"
 
 #include "sun_nio_ch_Net.h"
 #include "sun_nio_ch_PollArrayWrapper.h"
@@ -100,6 +101,36 @@ Java_sun_nio_ch_Net_initIDs(JNIEnv *env, jclass clazz)
      CHECK_NULL(isa_ctorID);
 
      initInetAddressIDs(env);
+}
+
+JNIEXPORT void JNICALL
+Java_sun_nio_ch_Net_initFunctionPtrs(JNIEnv *env, jclass clazz) {
+    GUID GuidConnectEx = WSAID_CONNECTEX;
+    SOCKET s;
+    int rv;
+    DWORD dwBytes;
+
+    s = socket(AF_INET, SOCK_STREAM, 0);
+    if (s == INVALID_SOCKET && WSAGetLastError() == WSAEAFNOSUPPORT) {
+        /* IPv4 unavailable... try IPv6 instead */
+        s = socket(AF_INET6, SOCK_STREAM, 0);
+    }
+    if (s == INVALID_SOCKET) {
+        JNU_ThrowIOExceptionWithLastError(env, "socket failed");
+        return;
+    }
+    rv = WSAIoctl(s,
+                  SIO_GET_EXTENSION_FUNCTION_POINTER,
+                  (LPVOID)&GuidConnectEx,
+                  sizeof(GuidConnectEx),
+                  &ConnectEx_func,
+                  sizeof(ConnectEx_func),
+                  &dwBytes,
+                  NULL,
+                  NULL);
+    if (rv != 0)
+        JNU_ThrowIOExceptionWithLastError(env, "WSAIoctl failed");
+    closesocket(s);
 }
 
 JNIEXPORT jboolean JNICALL
@@ -260,6 +291,15 @@ Java_sun_nio_ch_Net_connect0(JNIEnv *env, jclass clazz, jboolean preferIPv6, job
         }
     }
     return 1;
+}
+
+JNIEXPORT jint JNICALL
+Java_sun_nio_ch_Net_isConnected(JNIEnv *env, jclass clazz, jobject fdo)
+{
+    struct sockaddr addr;
+    socklen_t len = sizeof(addr);
+    int n = getpeername(fdval(env, fdo), &addr, &len);
+    return n == 0 ? 1 : 0;
 }
 
 JNIEXPORT jint JNICALL
