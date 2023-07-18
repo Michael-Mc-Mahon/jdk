@@ -37,8 +37,8 @@ import java.io.IOException;
 import jdk.internal.misc.Unsafe;
 
 /**
+ * Wrapper around connectx. On Windows a cleanup method is needed after connectx returns
  */
-
 class ConnectxImpl {
     private static final Unsafe unsafe = Unsafe.getUnsafe();
     private static final int addressSize = unsafe.addressSize();
@@ -61,15 +61,15 @@ class ConnectxImpl {
      */
     private static final int SIZEOF_OVERLAPPED = dependsArch(20, 32);
 
-    static int connect(boolean preferIPv6, FileDescriptor fd, boolean isBlocking,
-                        InetAddress remote, int remotePort, long dataAddress,
-                        int dataLen) throws IOException
+    static int startConnect(boolean preferIPv6, FileDescriptor fd, boolean isBlocking,
+                            InetAddress remote, int remotePort, long dataAddress,
+                            int dataLen) throws IOException
     {
         long ol = 0L;
         int ret = -1;
         try {
             ol = unsafe.allocateMemory(SIZEOF_OVERLAPPED);
-            ret = connect0(preferIPv6, fd, isBlocking, remote, ol, remotePort,
+            ret = startConnect0(preferIPv6, fd, isBlocking, remote, ol, remotePort,
                                 dataAddress, dataLen);
             if (ret >= 0 && !isBlocking) {
                olbufs.put(fd, ol);
@@ -95,12 +95,12 @@ class ConnectxImpl {
         }
     }
 
-    static native int connect0(boolean preferIPv6,
-                               FileDescriptor fd,
-                               boolean isBlocking,
-                               InetAddress remote,
-                               long ol,
-                               int remotePort,
-                               long dataAddress,
-                               int dataLen) throws IOException;
+    static native int startConnect0(boolean preferIPv6,
+                                    FileDescriptor fd,
+                                    boolean isBlocking,
+                                    InetAddress remote,
+                                    long ol,
+                                    int remotePort,
+                                    long dataAddress,
+                                    int dataLen) throws IOException;
 }

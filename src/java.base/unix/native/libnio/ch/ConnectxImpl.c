@@ -47,14 +47,18 @@
 #include <sys/utsname.h>
 #endif
 
+#if defined(__linux__) && !defined(MSG_FASTOPEN)
+  #define MSG_FASTOPEN 0x20000000
+#endif
+
 /**
  * Returns number of bytes sent if no error (should be either 0 or len)
  * Use isConnected to determine whether socket is connected or not
  */
 JNIEXPORT jint JNICALL
-Java_sun_nio_ch_ConnectxImpl_startConnect(JNIEnv *env, jclass clazz, jboolean preferIPv6, jobject fdo,
-                              jboolean unused, jobject iao, jint port,
-                              jlong bufAddress, jint len)
+Java_sun_nio_ch_ConnectxImpl_startConnect0(JNIEnv *env, jclass clazz, jboolean preferIPv6, jobject fdo,
+                                           jboolean unused, jobject iao, jint port,
+                                           jlong bufAddress, jint len)
 {
     SOCKETADDRESS sa;
     int sa_len = 0;

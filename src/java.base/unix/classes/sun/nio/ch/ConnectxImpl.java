@@ -29,6 +29,9 @@ import java.io.FileDescriptor;
 import java.io.IOException;
 import java.net.InetAddress;
 
+/**
+ * Wrapper around connectx function
+ */
 class ConnectxImpl {
 
     static int startConnect(boolean preferIPv6, FileDescriptor fd, boolean isBlocking,
@@ -44,10 +47,10 @@ class ConnectxImpl {
     }
 
     private static native int startConnect0(boolean preferIPv6,
-                                               FileDescriptor fd,
-                                               boolean isBlocking,
-                                               InetAddress remote,
-                                               int remotePort,
-                                               long dataAddress,
-                                               int dataLen) throws IOException;
+                                            FileDescriptor fd,
+                                            boolean isBlocking,
+                                            InetAddress remote,
+                                            int remotePort,
+                                            long dataAddress,
+                                            int dataLen) throws IOException;
 }

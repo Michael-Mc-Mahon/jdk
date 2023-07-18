@@ -612,7 +612,7 @@ public class Net {
         boolean preferIPv6 = isIPv6Available() && (family != StandardProtocolFamily.INET);
         InetSocketAddress isa = (InetSocketAddress) remote;
         return ConnectxImpl.startConnect(preferIPv6, fd, isBlocking, isa.getAddress(), isa.getPort(),
-                         dataAddress, dataLen);
+                                         dataAddress, dataLen);
     }
 
     static void finishConnectx(FileDescriptor fd) {

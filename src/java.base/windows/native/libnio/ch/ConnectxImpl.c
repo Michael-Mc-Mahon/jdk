@@ -44,8 +44,8 @@
  */
 JNIEXPORT jint JNICALL
 Java_sun_nio_ch_ConnectxImpl_startConnect0(JNIEnv *env, jclass clazz, jboolean preferIPv6, jobject fdo,
-                                jboolean isBlocking, jobject iao, jlong ol,
-                                jint port, jlong bufAddress, jint len)
+                                           jboolean isBlocking, jobject iao, jlong ol,
+                                           jint port, jlong bufAddress, jint len)
 {
     SOCKETADDRESS sa;
     int sa_len = 0;

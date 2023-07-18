@@ -30,7 +30,6 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <limits.h>
-#include <stdio.h>
 
 #include "jni.h"
 #include "jni_util.h"
@@ -60,11 +59,6 @@
     #define IPV6_MULTICAST_ALL    29
   #endif
 #endif
-
-#if defined(__linux__) && !defined(MSG_FASTOPEN)
-  #define MSG_FASTOPEN 0x20000000
-#endif
-
 
 /**
  * IPV6_ADD_MEMBERSHIP/IPV6_DROP_MEMBERSHIP may not be defined on OSX and AIX
