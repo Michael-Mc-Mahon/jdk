@@ -303,8 +303,6 @@ class SocketChannelImpl
         }
     }
 
-    private static ByteBuffer empty = ByteBuffer.allocate(0);
-
     @Override
     @SuppressWarnings("unchecked")
     public <T> T getOption(SocketOption<T> name)
@@ -327,10 +325,7 @@ class SocketChannelImpl
                     return (T) Boolean.valueOf(isReuseAddress);
                 }
                 if (name.name().equals("TCP_FASTOPEN_CONNECT_DATA")) {
-                    if (this.tcpFastOpenData == null) {
-                        return (T) empty;
-                    }
-                    return (T) tcpFastOpenData.duplicate();
+                    throw new UnsupportedOperationException("cannot get TCP_FASTOPEN_CONNECT_DATA");
                 }
             }
             // no options that require special handling

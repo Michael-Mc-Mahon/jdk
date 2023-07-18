@@ -220,34 +220,33 @@ public final class ExtendedSocketOptions {
      * a client connection.
      *
      * <p> Setting the option requests TCP fast open where the given {@link ByteBuffer}
-     * contains the data to be sent with the initial SYN. Depending on whether
-     * a fast open cookie for the destination is available, and also whether
-     * the data is small enough to fit in the initial TCP message, the data may be sent
-     * partially or fully or not at all with the opening SYN. Regardless of this,
-     * if the socket is in blocking mode, then all data will have been sent if
-     * connect returns successfully. If a fast open cookie is not present,
-     * then one is requested and subsequent connections to the same destination
+     * contains the data to be sent with the initial SYN. Note, the buffer supplied
+     * is not copied and must not be modified until after connect is called on the channel.
+     * When connect returns the {@code ByteBuffer}'s position will be updated to reflect any
+     * data that may have been sent with the connect.
+     *
+     * <p> Depending on whether a fast open cookie for the destination is available,
+     * and also whether the data is small enough to fit in the initial TCP message,
+     * the data may be sent partially or fully or not at all with the opening SYN.
+     * Regardless of this, if the socket is in blocking mode, then all data will have been
+     * sent or queued for sending if connect returns successfully. If a fast open cookie
+     * is not present, then one is requested and subsequent connections to the same destination
      * should operate in fast open mode.
      *
      * <p> If the socket is in non-blocking mode then the behavior is slightly
      * different. In this case, when connect returns, the buffer supplied with
      * the socket option may be queued for sending fully, partially or not at all.
-     * The caller must get the TCP_FASTOPEN_CONNECT_DATA socket option for the socket
-     * after connect returns. This returns (a copy of) the originally supplied
-     * {@link ByteBuffer} in its updated state after the connect operation.
-     * Any <i>remaining</i> bytes in the buffer need to be written to the socket
-     * after it is connected and before any subsequent buffers of user data.
+     * The position of the ByteBuffer will be updated (or not) to reflect this
+     * after connect returns. Any <i>remaining</i> bytes in the buffer need to be
+     * written to the socket after it is connected and before any subsequent
+     * buffers of user data.
      *
-     * <p> Getting the socket option prior to connect being called on the socket
-     * will return an empty {@link ByteBuffer} if the option has not been set,
-     * or a copy of the unsent {@link ByteBuffer} if the option was set.
+     * <p> Getting the socket option is an error resulting in
+     * {@link UnsupportedOperationException}.
      *
      * <p> Setting the option on a connected socket or after connect has been called
      * is an error, resulting in {@link IllegalStateException}.
      *
-     * <p> Not all platforms support this option in non-blocking mode. In that case,
-     * {@link IOException} will be thrown at connect time. [Windows impl uses overlapped
-     * I/O. Need to confirm this will work with our Windows selector impls]
      */
     public static final SocketOption<ByteBuffer> TCP_FASTOPEN_CONNECT_DATA =
             new ExtSocketOption<>("TCP_FASTOPEN_CONNECT_DATA", ByteBuffer.class);
@@ -381,8 +380,6 @@ public final class ExtendedSocketOptions {
                     return getTcpKeepAliveTime(fd);
                 } else if (option == TCP_KEEPINTERVAL) {
                     return getTcpKeepAliveIntvl(fd);
-                } else if (option == TCP_FASTOPEN_CONNECT_DATA) {
-                    return getTcpFastOpenConnectData(fd);
                 } else if (option == SO_PEERCRED) {
                     return getSoPeerCred(fd);
                 } else if (option == SO_INCOMING_NAPI_ID) {
@@ -457,10 +454,6 @@ public final class ExtendedSocketOptions {
     }
 
     private static int getTcpFastOpen(FileDescriptor fd) throws SocketException {
-        throw new UnsupportedOperationException();
-    }
-
-    private static ByteBuffer getTcpFastOpenConnectData(FileDescriptor fd) throws SocketException {
         throw new UnsupportedOperationException();
     }
 
@@ -552,10 +545,6 @@ public final class ExtendedSocketOptions {
         }
 
         void setTcpFastOpen(int fd, int value) throws SocketException {
-            throw new UnsupportedOperationException();
-        }
-
-        ByteBuffer getTcpFastOpenConnectData(int fd) throws SocketException {
             throw new UnsupportedOperationException();
         }
 

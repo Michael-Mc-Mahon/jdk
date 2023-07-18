@@ -611,12 +611,12 @@ public class Net {
     {
         boolean preferIPv6 = isIPv6Available() && (family != StandardProtocolFamily.INET);
         InetSocketAddress isa = (InetSocketAddress) remote;
-        return NetMd.connectx(preferIPv6, fd, isBlocking, isa.getAddress(), isa.getPort(),
+        return ConnectxImpl.startConnect(preferIPv6, fd, isBlocking, isa.getAddress(), isa.getPort(),
                          dataAddress, dataLen);
     }
 
     static void finishConnectx(FileDescriptor fd) {
-        NetMd.finishConnectx(fd);
+        ConnectxImpl.finishConnect(fd);
     }
 
     public static native int accept(FileDescriptor fd,

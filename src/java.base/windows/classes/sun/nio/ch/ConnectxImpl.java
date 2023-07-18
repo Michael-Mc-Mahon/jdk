@@ -39,7 +39,7 @@ import jdk.internal.misc.Unsafe;
 /**
  */
 
-class NetMd {
+class ConnectxImpl {
     private static final Unsafe unsafe = Unsafe.getUnsafe();
     private static final int addressSize = unsafe.addressSize();
 
@@ -61,7 +61,7 @@ class NetMd {
      */
     private static final int SIZEOF_OVERLAPPED = dependsArch(20, 32);
 
-    static int connectx(boolean preferIPv6, FileDescriptor fd, boolean isBlocking,
+    static int connect(boolean preferIPv6, FileDescriptor fd, boolean isBlocking,
                         InetAddress remote, int remotePort, long dataAddress,
                         int dataLen) throws IOException
     {
@@ -69,7 +69,7 @@ class NetMd {
         int ret = -1;
         try {
             ol = unsafe.allocateMemory(SIZEOF_OVERLAPPED);
-            ret = connectx0(preferIPv6, fd, isBlocking, remote, ol, remotePort,
+            ret = connect0(preferIPv6, fd, isBlocking, remote, ol, remotePort,
                                 dataAddress, dataLen);
             if (ret >= 0 && !isBlocking) {
                olbufs.put(fd, ol);
@@ -88,19 +88,19 @@ class NetMd {
     // OVERLAPPED buffer must be freed for any non-blocking connectx call
     // which succeeded.
 
-    static void finishConnectx(FileDescriptor fd) {
+    static void finishConnect(FileDescriptor fd) {
         Long ol = olbufs.remove(fd);
         if (ol != null) {
             unsafe.freeMemory(ol.longValue());
         }
     }
 
-    static native int connectx0(boolean preferIPv6,
-                                FileDescriptor fd,
-                                boolean isBlocking,
-                                InetAddress remote,
-                                long ol,
-                                int remotePort,
-                                long dataAddress,
-                                int dataLen) throws IOException;
+    static native int connect0(boolean preferIPv6,
+                               FileDescriptor fd,
+                               boolean isBlocking,
+                               InetAddress remote,
+                               long ol,
+                               int remotePort,
+                               long dataAddress,
+                               int dataLen) throws IOException;
 }

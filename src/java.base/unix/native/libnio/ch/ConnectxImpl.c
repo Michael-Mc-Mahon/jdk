@@ -52,7 +52,7 @@
  * Use isConnected to determine whether socket is connected or not
  */
 JNIEXPORT jint JNICALL
-Java_sun_nio_ch_NetMd_connectx0(JNIEnv *env, jclass clazz, jboolean preferIPv6, jobject fdo,
+Java_sun_nio_ch_ConnectxImpl_startConnect(JNIEnv *env, jclass clazz, jboolean preferIPv6, jobject fdo,
                               jboolean unused, jobject iao, jint port,
                               jlong bufAddress, jint len)
 {
@@ -110,7 +110,7 @@ Java_sun_nio_ch_NetMd_connectx0(JNIEnv *env, jclass clazz, jboolean preferIPv6, 
             return IOS_THROWN;
         } else if (errno == EINPROGRESS) {
             /* non-blocking TCP fast connect where no cookie is available. This means
-             * zero bytes were written and user needs to write the data after the 
+             * zero bytes were written and user needs to write the data after the
              * socket is connected. Also can happen if greater number of bytes
              * to be written than will fit in initial SYN.
              */

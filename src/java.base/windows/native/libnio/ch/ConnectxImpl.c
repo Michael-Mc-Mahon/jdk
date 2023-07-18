@@ -25,7 +25,6 @@
 
 #include <windows.h>
 #include <winsock2.h>
-#include <stdio.h>
 
 #include "jni.h"
 #include "jni_util.h"
@@ -36,9 +35,7 @@
 #include "net_util.h"
 #include "extfunctionPtr.h"
 
-#include "sun_nio_ch_NetMd.h"
-
-static FILE *file = 0;
+#include "sun_nio_ch_ConnectxImpl.h"
 
 /**
  * Returns number of bytes sent if no error (should be either 0 or len)
@@ -46,7 +43,7 @@ static FILE *file = 0;
  * returns < 0 IOS_ error code on error
  */
 JNIEXPORT jint JNICALL
-Java_sun_nio_ch_NetMd_connectx0(JNIEnv *env, jclass clazz, jboolean preferIPv6, jobject fdo,
+Java_sun_nio_ch_ConnectxImpl_startConnect0(JNIEnv *env, jclass clazz, jboolean preferIPv6, jobject fdo,
                                 jboolean isBlocking, jobject iao, jlong ol,
                                 jint port, jlong bufAddress, jint len)
 {

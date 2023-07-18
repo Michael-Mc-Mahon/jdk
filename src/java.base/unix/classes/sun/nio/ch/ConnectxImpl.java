@@ -29,24 +29,25 @@ import java.io.FileDescriptor;
 import java.io.IOException;
 import java.net.InetAddress;
 
-class NetMd {
+class ConnectxImpl {
 
-    static int connectx(boolean preferIPv6, FileDescriptor fd, boolean isBlocking,
+    static int startConnect(boolean preferIPv6, FileDescriptor fd, boolean isBlocking,
                         InetAddress addr, int port, long dataAddress,
                         int dataLen) throws IOException
     {
-        return connectx0(preferIPv6, fd, isBlocking, addr, port, dataAddress, dataLen);
+        return startConnect0(preferIPv6, fd, isBlocking, addr, port, dataAddress, dataLen);
     }
 
 
-    static void finishConnectx(FileDescriptor fd) {}
+    static void finishConnect(FileDescriptor fd) {
+        // NO OP on Unix
+    }
 
-    private static native int connectx0(boolean preferIPv6,
-                                                FileDescriptor fd,
-                                                boolean isBlocking,
-                                                InetAddress remote,
-                                                int remotePort,
-                                                long dataAddress,
-                                                int dataLen) throws IOException;
-
+    private static native int startConnect0(boolean preferIPv6,
+                                               FileDescriptor fd,
+                                               boolean isBlocking,
+                                               InetAddress remote,
+                                               int remotePort,
+                                               long dataAddress,
+                                               int dataLen) throws IOException;
 }
