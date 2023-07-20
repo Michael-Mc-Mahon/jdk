@@ -287,6 +287,9 @@ class SocketChannelImpl
 
                 // extended socket option handled here
                 if (name.name().equals("TCP_FASTOPEN_CONNECT_DATA")) {
+                    if (state != ST_UNCONNECTED) {
+                        throw new IllegalStateExeption("TFO must be set on an unconnected channel");
+                    }
                     var data = ((ByteBuffer) (Objects.requireNonNull(value))).duplicate();
                     if (data.remaining() == 0)
                         throw new IllegalArgumentException("TFO data cannot be 0 bytes");

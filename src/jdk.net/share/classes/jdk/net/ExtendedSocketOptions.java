@@ -239,7 +239,13 @@ public final class ExtendedSocketOptions {
      * The position of the ByteBuffer will be updated (or not) to reflect this
      * after connect returns. Any <i>remaining</i> bytes in the buffer need to be
      * written to the socket after it is connected and before any subsequent
-     * buffers of user data.
+     * buffers of user data. On some platforms, all offered data will be queued
+     * for sending (up to the socket buffer limit) but only some will actually be
+     * sent with the initial SYN. On other platforms, only whatever data that can
+     * sent with the initial SYN is queued for sending. Either way, the behavior of
+     * calling code should be the same. The provided {@code ByteBuffer} must be
+     * checked for remaining bytes and these must be written to the channel
+     * immediately after it is connected.
      *
      * <p> Getting the socket option is an error resulting in
      * {@link UnsupportedOperationException}.
