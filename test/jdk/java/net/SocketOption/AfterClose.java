@@ -38,6 +38,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketOption;
+import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
@@ -52,6 +53,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import static java.lang.Boolean.*;
 import static java.net.StandardSocketOptions.*;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.testng.Assert.expectThrows;
 
 public class AfterClose {
@@ -103,6 +105,11 @@ public class AfterClose {
             map.put((SocketOption<?>)field.get(null), listOf(10, 100));
             field = c.getField("TCP_KEEPCOUNT");
             map.put((SocketOption<?>)field.get(null), listOf(10, 100));
+            field = c.getField("TCP_FASTOPEN");
+            map.put((SocketOption<?>)field.get(null), listOf(0, 5));
+            field = c.getField("TCP_FASTOPEN_CONNECT_DATA");
+            map.put((SocketOption<?>)field.get(null), 
+		listOf(ByteBuffer.wrap("Hello world".getBytes(UTF_8))));
             field = c.getField("SO_INCOMING_NAPI_ID");
             map.put((SocketOption<?>)field.get(null), listOf(RO));
             field = c.getField("IP_DONTFRAGMENT");
