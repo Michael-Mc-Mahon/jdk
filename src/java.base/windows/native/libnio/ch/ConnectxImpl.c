@@ -52,7 +52,7 @@ Java_sun_nio_ch_ConnectxImpl_startConnect0(JNIEnv *env, jclass clazz, jboolean p
     void *buf = (void *)jlong_to_ptr(bufAddress);
     SOCKET s = fdval(env, fdo);
     OVERLAPPED *lpOl = (OVERLAPPED *)jlong_to_ptr(ol);
-    DWORD xfer, bytesSent = 0;
+    DWORD xfer=0, bytesSent = 0;
 
     if (NET_InetAddressToSockaddr(env, iao, port, &sa, &sa_len, preferIPv6) != 0) {
         return IOS_THROWN;
@@ -62,16 +62,24 @@ Java_sun_nio_ch_ConnectxImpl_startConnect0(JNIEnv *env, jclass clazz, jboolean p
 
     BOOL res = (*ConnectEx_func)(s, &sa.sa, sa_len, (PVOID)bufAddress,
                                  (DWORD)len, &bytesSent, lpOl);
+    printf("WWW 1 %d len=%d, bytesSent=%d\n", res, len, bytesSent);
     if (!res) {
         int error = GetLastError();
+    printf("WWW 2 %d\n", error);
         if (error == ERROR_IO_PENDING) {
-            res = GetOverlappedResult((HANDLE)s, lpOl, &xfer, isBlocking);
-            if (res) {
-                return xfer;
-            } else {
-                JNU_ThrowIOExceptionWithLastError(env, "ConnectEx failed");
-                return IOS_THROWN;
-            }
+	    if (isBlocking) {
+                res = GetOverlappedResult((HANDLE)s, lpOl, &xfer, isBlocking);
+                printf("WWW 3 %d\n", xfer);
+                if (res) {
+                    return xfer;
+                } else {
+                    JNU_ThrowIOExceptionWithLastError(env, "ConnectEx failed");
+                    return IOS_THROWN;
+                }
+	    } else {
+                printf("WWW 4 bytesSent=%d\n", bytesSent);
+		return bytesSent;
+	    }
         }
         JNU_ThrowIOExceptionWithLastError(env, "ConnectEx failed");
         return IOS_THROWN;
@@ -79,4 +87,13 @@ Java_sun_nio_ch_ConnectxImpl_startConnect0(JNIEnv *env, jclass clazz, jboolean p
         // TRUE returned: means connected
         return bytesSent;
     }
+}
+
+
+JNIEXPORT void JNICALL
+Java_sun_nio_ch_ConnectxImpl_finishConnect0(JNIEnv *env, jclass clazz, jobject fdo)
+{
+    SOCKET s = fdval(env, fdo);
+    int c = setsockopt(s, SOL_SOCKET, SO_UPDATE_CONNECT_CONTEXT, NULL, 0);
+    printf("SO_UPDATE ret %d\n", c);
 }

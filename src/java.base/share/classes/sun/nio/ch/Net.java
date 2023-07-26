@@ -616,6 +616,7 @@ public class Net {
     }
 
     static void finishConnectx(FileDescriptor fd) {
+	(new Throwable()).printStackTrace();
         ConnectxImpl.finishConnect(fd);
     }
 

@@ -71,12 +71,12 @@ class ConnectxImpl {
             ol = unsafe.allocateMemory(SIZEOF_OVERLAPPED);
             ret = startConnect0(preferIPv6, fd, isBlocking, remote, ol, remotePort,
                                 dataAddress, dataLen);
-            if (ret >= 0 && !isBlocking) {
+            if (ret >= 0) {
                olbufs.put(fd, ol);
             }
             return ret;
         } finally {
-            if ((ret < 0) || (isBlocking && ol != 0L)) {
+            if (ret < 0) {
                 unsafe.freeMemory(ol);
             }
         }
@@ -93,6 +93,7 @@ class ConnectxImpl {
         if (ol != null) {
             unsafe.freeMemory(ol.longValue());
         }
+	finishConnect0(fd);
     }
 
     static native int startConnect0(boolean preferIPv6,
@@ -103,4 +104,6 @@ class ConnectxImpl {
                                     int remotePort,
                                     long dataAddress,
                                     int dataLen) throws IOException;
+
+    static native void finishConnect0(FileDescriptor fd);
 }

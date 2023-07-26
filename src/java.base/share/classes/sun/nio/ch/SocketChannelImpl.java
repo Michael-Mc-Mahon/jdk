@@ -265,8 +265,8 @@ class SocketChannelImpl
         throws IOException
     {
         Objects.requireNonNull(name);
-        if (!supportedOptions().contains(name))
-            throw new UnsupportedOperationException("'" + name + "' not supported");
+        //if (!supportedOptions().contains(name))
+            //throw new UnsupportedOperationException("'" + name + "' not supported");
         if (!name.type().isInstance(value))
             throw new IllegalArgumentException("Invalid value '" + value + "'");
 
@@ -288,9 +288,9 @@ class SocketChannelImpl
                 // extended socket option handled here
                 if (name.name().equals("TCP_FASTOPEN_CONNECT_DATA")) {
                     if (state != ST_UNCONNECTED) {
-                        throw new IllegalStateExeption("TFO must be set on an unconnected channel");
+                        throw new IllegalStateException("TFO must be set on an unconnected channel");
                     }
-                    var data = ((ByteBuffer) (Objects.requireNonNull(value))).duplicate();
+                    var data = (ByteBuffer) (Objects.requireNonNull(value));
                     if (data.remaining() == 0)
                         throw new IllegalArgumentException("TFO data cannot be 0 bytes");
                     if (isConnected())
@@ -884,6 +884,9 @@ class SocketChannelImpl
                     } else {
                         localAddress = Net.localAddress(fd);
                     }
+                    if (blocking && tcpFastOpenData != null) {
+		        Net.finishConnectx(fd);
+ 		    }
                     state = ST_CONNECTED;
                 }
             }
@@ -942,12 +945,13 @@ class SocketChannelImpl
         } else {
             ByteBuffer bb = Util.getTemporaryDirectBuffer(size);
             try {
+                int orig = data.position();
                 bb.put(data);
                 bb.flip();
                 n = Net.connectx(family, fd, remote, isBlocking(), ((DirectBuffer) bb).address(), size);
                 if (n < size) {
                     // adjust position of data: only n bytes written
-                    data.position(data.position() - (size -n));
+                    data.position(orig+n);
                 }
             } finally {
                 Util.offerFirstTemporaryDirectBuffer(bb);
@@ -1045,6 +1049,9 @@ class SocketChannelImpl
                     } else {
                         localAddress = Net.localAddress(fd);
                     }
+                    if (tcpFastOpenData != null) {
+		        Net.finishConnectx(fd);
+ 		    }
                     state = ST_CONNECTED;
                 }
             }
@@ -1075,9 +1082,6 @@ class SocketChannelImpl
                         }
                         connected = polled && isOpen();
                     } finally {
-                        if (!blocking && tcpFastOpenData != null) {
-                            Net.finishConnectx(fd);
-                        }
                         endFinishConnect(blocking, connected);
                     }
                     assert (blocking && connected) ^ !blocking;
