@@ -757,13 +757,17 @@ class SocketChannelImpl
 
     @Override
     public SocketChannel bind(SocketAddress local) throws IOException {
+        return bindCheckPending(local, true);
+    }
+
+    private SocketChannel bindCheckPending(SocketAddress local, boolean checkPending) throws IOException {
         readLock.lock();
         try {
             writeLock.lock();
             try {
                 synchronized (stateLock) {
                     ensureOpen();
-                    if (state == ST_CONNECTIONPENDING)
+                    if (checkPending && state == ST_CONNECTIONPENDING)
                         throw new ConnectionPendingException();
                     if (localAddress != null)
                         throw new AlreadyBoundException();
@@ -885,8 +889,8 @@ class SocketChannelImpl
                         localAddress = Net.localAddress(fd);
                     }
                     if (blocking && tcpFastOpenData != null) {
-		        Net.finishConnectx(fd);
- 		    }
+                        Net.finishConnectx(fd);
+                    }
                     state = ST_CONNECTED;
                 }
             }
@@ -931,6 +935,10 @@ class SocketChannelImpl
             return Net.connect(family, fd, remote);
         }
 
+        // Must bind explicitly for TCP fast open
+        if (localAddress() == null) {
+            bindCheckPending(null, false);
+        }
         int pos = data.position();
         int lim = data.limit();
         assert (pos <= lim);
@@ -1050,8 +1058,8 @@ class SocketChannelImpl
                         localAddress = Net.localAddress(fd);
                     }
                     if (tcpFastOpenData != null) {
-		        Net.finishConnectx(fd);
- 		    }
+                        Net.finishConnectx(fd);
+                    }
                     state = ST_CONNECTED;
                 }
             }

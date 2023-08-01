@@ -29,6 +29,7 @@ import java.io.FileDescriptor;
 import java.io.IOException;
 import java.net.SocketException;
 import java.net.SocketOption;
+import java.net.SocketException;
 import java.net.StandardProtocolFamily;
 import java.nio.ByteBuffer;
 import java.util.Collections;
@@ -209,6 +210,8 @@ public final class ExtendedSocketOptions {
      * IllegalArgumentException}. On some platforms the numeric value is a
      * hint representing the requested maximum queue length of incoming
      * fast open connections (analogous to the listen queue).
+     * <p> If the channel is not bound when this option is set, then
+     * {@link SocketException} is thrown.
      *
      * Fast open data is received by accepted sockets in the normal way.
      */

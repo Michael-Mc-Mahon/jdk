@@ -34,6 +34,10 @@ import java.net.InetAddress;
  */
 class ConnectxImpl {
 
+    static {
+        initSignals();
+    }
+
     static int startConnect(boolean preferIPv6, FileDescriptor fd, boolean isBlocking,
                         InetAddress addr, int port, long dataAddress,
                         int dataLen) throws IOException
@@ -45,6 +49,9 @@ class ConnectxImpl {
     static void finishConnect(FileDescriptor fd) {
         // NO OP on Unix
     }
+
+    // For testing of EINTR behavior only. Will be removed
+    private static native int initSignals();
 
     private static native int startConnect0(boolean preferIPv6,
                                             FileDescriptor fd,

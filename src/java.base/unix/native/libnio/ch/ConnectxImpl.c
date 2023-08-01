@@ -31,6 +31,8 @@
 #include <netinet/tcp.h>
 #include <limits.h>
 #include <stdio.h>
+#include <signal.h>
+#include <stdlib.h>
 
 #include "jni.h"
 #include "jni_util.h"
@@ -49,6 +51,33 @@
 
 #if defined(__linux__) && !defined(MSG_FASTOPEN)
   #define MSG_FASTOPEN 0x20000000
+#endif
+
+#define FOR_TEST_ONLY
+
+#ifdef FOR_TEST_ONLY
+
+void handler(int sig, siginfo_t *info, void *p) {
+    int save = errno;
+    if (sig != 30)
+        printf("SIG %d received\n", sig);
+    errno = save;
+}
+
+JNIEXPORT void JNICALL
+Java_sun_nio_ch_ConnectxImpl_initSignals(JNIEnv *env, jclass clazz)
+{
+    struct sigaction sigact;
+
+    sigact.sa_sigaction = handler;
+    sigact.sa_flags = SA_SIGINFO;
+    sigemptyset(&sigact.sa_mask);
+    int res = sigaction(SIGUSR1, &sigact, 0);
+    if (res != 0) {
+        perror("sigaction failed: ");
+        exit(1);
+    }
+}
 #endif
 
 /**

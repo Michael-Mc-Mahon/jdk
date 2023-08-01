@@ -53,8 +53,15 @@ Java_sun_nio_ch_ConnectxImpl_startConnect0(JNIEnv *env, jclass clazz, jboolean p
     SOCKET s = fdval(env, fdo);
     OVERLAPPED *lpOl = (OVERLAPPED *)jlong_to_ptr(ol);
     DWORD xfer=0, bytesSent = 0;
+    int fastopen = 1;
 
     if (NET_InetAddressToSockaddr(env, iao, port, &sa, &sa_len, preferIPv6) != 0) {
+        return IOS_THROWN;
+    }
+
+    int rv = setsockopt(s, IPPROTO_TCP, TCP_FASTOPEN, (char *)&fastopen, sizeof (fastopen));
+    if (rv != 0) {
+        JNU_ThrowIOExceptionWithLastError(env, "could not set TCP_FASTOPEN");
         return IOS_THROWN;
     }
 
@@ -67,7 +74,7 @@ Java_sun_nio_ch_ConnectxImpl_startConnect0(JNIEnv *env, jclass clazz, jboolean p
         int error = GetLastError();
     printf("WWW 2 %d\n", error);
         if (error == ERROR_IO_PENDING) {
-	    if (isBlocking) {
+            if (isBlocking) {
                 res = GetOverlappedResult((HANDLE)s, lpOl, &xfer, isBlocking);
                 printf("WWW 3 %d\n", xfer);
                 if (res) {
@@ -76,10 +83,10 @@ Java_sun_nio_ch_ConnectxImpl_startConnect0(JNIEnv *env, jclass clazz, jboolean p
                     JNU_ThrowIOExceptionWithLastError(env, "ConnectEx failed");
                     return IOS_THROWN;
                 }
-	    } else {
+            } else {
                 printf("WWW 4 bytesSent=%d\n", bytesSent);
-		return bytesSent;
-	    }
+                return bytesSent;
+            }
         }
         JNU_ThrowIOExceptionWithLastError(env, "ConnectEx failed");
         return IOS_THROWN;
