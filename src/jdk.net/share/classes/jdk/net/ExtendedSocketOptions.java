@@ -224,8 +224,8 @@ public final class ExtendedSocketOptions {
      *
      * <p> Setting the option requests TCP fast open where the given {@link ByteBuffer}
      * contains the data to be sent with the initial SYN. Note, the buffer supplied
-     * is not copied and must not be modified until after connect is called on the channel.
-     * When connect returns the {@code ByteBuffer}'s position will be updated to reflect any
+     * is not copied and must not be modified until the socket becomes connected.
+     * When connected the {@code ByteBuffer}'s position will be updated to reflect any
      * data that may have been sent with the connect.
      *
      * <p> Depending on whether a fast open cookie for the destination is available,
@@ -239,9 +239,11 @@ public final class ExtendedSocketOptions {
      * <p> If the socket is in non-blocking mode then the behavior is slightly
      * different. In this case, when connect returns, the buffer supplied with
      * the socket option may be queued for sending fully, partially or not at all.
-     * The position of the ByteBuffer will be updated (or not) to reflect this
-     * after connect returns. Any <i>remaining</i> bytes in the buffer need to be
-     * written to the socket after it is connected and before any subsequent
+     * On some platforms the position of the ByteBuffer may be updated to reflect this
+     * after connect returns. On other platforms, the position is updated just prior to
+     * the channel being marked connected. Therefore, platform independent calling code
+     * should wait until the channel is connected. Any <i>remaining</i> bytes in the buffer
+     * need to be written to the socket after it is connected and before writing any subsequent
      * buffers of user data. On some platforms, all offered data will be queued
      * for sending (up to the socket buffer limit) but only some will actually be
      * sent with the initial SYN. On other platforms, only whatever data that can

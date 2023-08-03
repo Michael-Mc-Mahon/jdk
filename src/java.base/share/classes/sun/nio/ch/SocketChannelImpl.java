@@ -265,8 +265,8 @@ class SocketChannelImpl
         throws IOException
     {
         Objects.requireNonNull(name);
-        //if (!supportedOptions().contains(name))
-            //throw new UnsupportedOperationException("'" + name + "' not supported");
+        if (!supportedOptions().contains(name))
+            throw new UnsupportedOperationException("'" + name + "' not supported");
         if (!name.type().isInstance(value))
             throw new IllegalArgumentException("Invalid value '" + value + "'");
 
@@ -890,8 +890,7 @@ class SocketChannelImpl
                     }
                     if (blocking && tcpFastOpenData != null) {
                         int n = Net.finishConnectx(fd, blocking);
-			System.out.println("Z2 Net.finishConnectx returns " + n);
-			consumeBytes(tcpFastOpenData, n);
+                        consumeBytes(tcpFastOpenData, n);
                     }
                     state = ST_CONNECTED;
                 }
@@ -930,9 +929,9 @@ class SocketChannelImpl
 
     // Consume bytes if value > 0
     private static void consumeBytes(ByteBuffer buf, int bytes) {
-	if (bytes > 0) {
-	    buf.position(buf.position() + bytes);
-	}
+        if (bytes > 0) {
+            buf.position(buf.position() + bytes);
+        }
     }
 
     /**
@@ -955,7 +954,7 @@ class SocketChannelImpl
         int n;
         if (data instanceof DirectBuffer) {
             n = Net.connectx(family, fd, remote, isBlocking(), ((DirectBuffer) data).address(), size);
-	    consumeBytes(data, n);
+            consumeBytes(data, n);
         } else {
             ByteBuffer bb = Util.getTemporaryDirectBuffer(size);
             try {
@@ -1065,8 +1064,7 @@ class SocketChannelImpl
                     }
                     if (tcpFastOpenData != null) {
                         int n = Net.finishConnectx(fd, blocking);
-			System.out.println("Z1 Net.finishConnectx returns " + n);
-			consumeBytes(tcpFastOpenData, n);
+                        consumeBytes(tcpFastOpenData, n);
                     }
                     state = ST_CONNECTED;
                 }

@@ -616,7 +616,6 @@ public class Net {
     }
 
     static int finishConnectx(FileDescriptor fd, boolean isBlocking) {
-	System.out.println("QQ finishConnectx");
         return ConnectxImpl.finishConnect(fd, isBlocking);
     }
 

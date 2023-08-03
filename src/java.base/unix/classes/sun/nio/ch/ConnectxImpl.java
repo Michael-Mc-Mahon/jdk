@@ -46,8 +46,9 @@ class ConnectxImpl {
     }
 
 
-    static void finishConnect(FileDescriptor fd) {
-        // NO OP on Unix
+    static int finishConnect(FileDescriptor fd, boolean isBlocking) {
+        // NO OP on Unix: 
+        return 0;
     }
 
     // For testing of EINTR behavior only. Will be removed
