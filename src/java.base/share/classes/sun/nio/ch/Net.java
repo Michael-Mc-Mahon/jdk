@@ -605,6 +605,7 @@ public class Net {
                                        int remotePort)
         throws IOException;
 
+    // Returns the number of bytes consumed by the initial connect operation
     static int connectx(ProtocolFamily family, FileDescriptor fd, SocketAddress remote,
                         boolean isBlocking, long dataAddress, int dataLen)
         throws IOException
@@ -615,6 +616,7 @@ public class Net {
                                          dataAddress, dataLen);
     }
 
+    // Returns the number of bytes consumed by the finishConnect operation
     static int finishConnectx(FileDescriptor fd, boolean isBlocking) {
         return ConnectxImpl.finishConnect(fd, isBlocking);
     }

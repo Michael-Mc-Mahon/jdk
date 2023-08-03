@@ -69,14 +69,11 @@ Java_sun_nio_ch_ConnectxImpl_startConnect0(JNIEnv *env, jclass clazz, jboolean p
 
     BOOL res = (*ConnectEx_func)(s, &sa.sa, sa_len, (PVOID)bufAddress,
                                  (DWORD)len, &bytesSent, lpOl);
-    printf("WWW 1 %d len=%d, bytesSent=%d\n", res, len, bytesSent);
     if (!res) {
         int error = GetLastError();
-    printf("WWW 2 %d\n", error);
         if (error == ERROR_IO_PENDING) {
             if (isBlocking) {
                 res = GetOverlappedResult((HANDLE)s, lpOl, &xfer, isBlocking);
-                printf("WWW 3 %d\n", xfer);
                 if (res) {
                     return xfer;
                 } else {
@@ -84,7 +81,6 @@ Java_sun_nio_ch_ConnectxImpl_startConnect0(JNIEnv *env, jclass clazz, jboolean p
                     return IOS_THROWN;
                 }
             } else {
-                printf("WWW 4 bytesSent=%d\n", bytesSent);
                 return bytesSent;
             }
         }
