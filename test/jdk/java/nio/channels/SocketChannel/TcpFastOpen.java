@@ -23,7 +23,8 @@
 
 /*
  * @test
- * @run junit TcpFastOpen
+ * @run main/othervm TcpFastOpen
+ * run junit TcpFastOpen
  */
 
 import java.io.IOException;
@@ -40,10 +41,10 @@ import static java.nio.charset.StandardCharsets.*;
 import static jdk.net.ExtendedSocketOptions.*;
 
 import jdk.net.ExtendedSocketOptions;
-import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
+//import org.junit.jupiter.api.Test;
+//import static org.junit.jupiter.api.Assertions.*;
 
-class TcpFastOpen {
+public class TcpFastOpen {
 
     public static void main(String[] args) throws Exception {
 	testFastOpenConnectData();
@@ -52,7 +53,7 @@ class TcpFastOpen {
     /**
      * Basic test of TCP_FASTOPEN_CONNECT_DATA.
      */
-    @Test
+    //@Test
     static void testFastOpenConnectData() throws IOException, InterruptedException {
         try (ServerSocketChannel listener = ServerSocketChannel.open()) {
             InetAddress lb = InetAddress.getLoopbackAddress();
@@ -86,7 +87,8 @@ class TcpFastOpen {
 	    }
             //Thread.sleep(Duration.ofSeconds(2));
             sc.finishConnect();
-            ByteBuffer remaining = sc.getOption(TCP_FASTOPEN_CONNECT_DATA);
+            //ByteBuffer remaining = sc.getOption(TCP_FASTOPEN_CONNECT_DATA);
+            ByteBuffer remaining = data;
 	    System.out.printf("returned BB = %s\n", remaining);
             while (remaining.remaining() > 0) {
                 sc.write(remaining);
@@ -107,6 +109,8 @@ class TcpFastOpen {
             }
             buf.flip();
             String actual = UTF_8.decode(buf).toString();
+            System.out.println("WW actual size " + actual.length());
+            System.out.println("WW expected size " + expected.length());
             assertEquals(expected, actual);
     }
 

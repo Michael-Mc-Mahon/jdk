@@ -88,12 +88,14 @@ class ConnectxImpl {
     // OVERLAPPED buffer must be freed for any non-blocking connectx call
     // which succeeded.
 
-    static void finishConnect(FileDescriptor fd) {
+    static int finishConnect(FileDescriptor fd, boolean isBlocking) {
         Long ol = olbufs.remove(fd);
-        if (ol != null) {
+	if (ol != null) {
+	    int bytes = finishConnect0(fd, isBlocking, ol.longValue());
             unsafe.freeMemory(ol.longValue());
+            return bytes;
         }
-	finishConnect0(fd);
+	return 0;
     }
 
     static native int startConnect0(boolean preferIPv6,
@@ -105,5 +107,5 @@ class ConnectxImpl {
                                     long dataAddress,
                                     int dataLen) throws IOException;
 
-    static native void finishConnect0(FileDescriptor fd);
+    static native int finishConnect0(FileDescriptor fd, boolean isBlocking, long ol);
 }

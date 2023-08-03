@@ -97,10 +97,20 @@ Java_sun_nio_ch_ConnectxImpl_startConnect0(JNIEnv *env, jclass clazz, jboolean p
 }
 
 
-JNIEXPORT void JNICALL
-Java_sun_nio_ch_ConnectxImpl_finishConnect0(JNIEnv *env, jclass clazz, jobject fdo)
+JNIEXPORT jint JNICALL
+Java_sun_nio_ch_ConnectxImpl_finishConnect0(JNIEnv *env, jclass clazz, jobject fdo, 
+		jboolean isBlocking, jlong ol)
 {
+    DWORD xfer=0;
     SOCKET s = fdval(env, fdo);
-    int c = setsockopt(s, SOL_SOCKET, SO_UPDATE_CONNECT_CONTEXT, NULL, 0);
-    printf("SO_UPDATE ret %d\n", c);
+    if (!isBlocking) {
+        OVERLAPPED *lpOl = (OVERLAPPED *)jlong_to_ptr(ol);
+        int res = GetOverlappedResult((HANDLE)s, lpOl, &xfer, JNI_TRUE);
+        if (!res) {
+            JNU_ThrowIOExceptionWithLastError(env, "GetOverlappedResult failed");
+            return IOS_THROWN;
+        }
+    }
+    setsockopt(s, SOL_SOCKET, SO_UPDATE_CONNECT_CONTEXT, NULL, 0);
+    return xfer;
 }

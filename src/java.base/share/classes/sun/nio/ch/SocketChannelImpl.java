@@ -889,7 +889,9 @@ class SocketChannelImpl
                         localAddress = Net.localAddress(fd);
                     }
                     if (blocking && tcpFastOpenData != null) {
-                        Net.finishConnectx(fd);
+                        int n = Net.finishConnectx(fd, blocking);
+			System.out.println("Z2 Net.finishConnectx returns " + n);
+			consumeBytes(tcpFastOpenData, n);
                     }
                     state = ST_CONNECTED;
                 }
@@ -926,6 +928,13 @@ class SocketChannelImpl
         }
     }
 
+    // Consume bytes if value > 0
+    private static void consumeBytes(ByteBuffer buf, int bytes) {
+	if (bytes > 0) {
+	    buf.position(buf.position() + bytes);
+	}
+    }
+
     /**
      * Connect this channel socket to a remote address. If data is non-null it
      * uses TCP Fast Open to send data in the SYN packet.
@@ -946,10 +955,7 @@ class SocketChannelImpl
         int n;
         if (data instanceof DirectBuffer) {
             n = Net.connectx(family, fd, remote, isBlocking(), ((DirectBuffer) data).address(), size);
-            if (n > 0) {
-                // consume any data that was sent
-                data.position(data.position()+n);
-            }
+	    consumeBytes(data, n);
         } else {
             ByteBuffer bb = Util.getTemporaryDirectBuffer(size);
             try {
@@ -1058,7 +1064,9 @@ class SocketChannelImpl
                         localAddress = Net.localAddress(fd);
                     }
                     if (tcpFastOpenData != null) {
-                        Net.finishConnectx(fd);
+                        int n = Net.finishConnectx(fd, blocking);
+			System.out.println("Z1 Net.finishConnectx returns " + n);
+			consumeBytes(tcpFastOpenData, n);
                     }
                     state = ST_CONNECTED;
                 }

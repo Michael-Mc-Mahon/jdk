@@ -615,8 +615,9 @@ public class Net {
                                          dataAddress, dataLen);
     }
 
-    static void finishConnectx(FileDescriptor fd) {
-        ConnectxImpl.finishConnect(fd);
+    static int finishConnectx(FileDescriptor fd, boolean isBlocking) {
+	System.out.println("QQ finishConnectx");
+        return ConnectxImpl.finishConnect(fd, isBlocking);
     }
 
     public static native int accept(FileDescriptor fd,
