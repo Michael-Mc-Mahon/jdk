@@ -949,11 +949,12 @@ class SocketChannelImpl
         }
         int pos = data.position();
         int lim = data.limit();
+	boolean isBlocking = isBlocking();
         assert (pos <= lim);
         int size = (pos <= lim ? lim - pos : 0);
         int n;
         if (data instanceof DirectBuffer) {
-            n = Net.connectx(family, fd, remote, isBlocking(), ((DirectBuffer) data).address(), size);
+            n = Net.connectx(family, fd, remote, isBlocking, ((DirectBuffer) data).address(), size);
             consumeBytes(data, n);
         } else {
             ByteBuffer bb = Util.getTemporaryDirectBuffer(size);
