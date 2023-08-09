@@ -420,10 +420,6 @@ public final class ExtendedSocketOptions {
         return platformSocketOptions.getQuickAck(fdAccess.get(fd));
     }
 
-    private static int getTcpKeepAliveProbes(FileDescriptor fd) throws SocketException {
-        return platformSocketOptions.getTcpKeepAliveProbes(fdAccess.get(fd));
-    }
-
     private static void setTcpKeepAliveProbes(FileDescriptor fd, int value)
             throws SocketException {
         platformSocketOptions.setTcpKeepAliveProbes(fdAccess.get(fd), value);
@@ -444,6 +440,7 @@ public final class ExtendedSocketOptions {
         platformSocketOptions.setTcpKeepAliveIntvl(fdAccess.get(fd), value);
     }
 
+<<<<<<< HEAD
     private static void setTcpFastOpen(FileDescriptor fd, int value) throws SocketException {
         platformSocketOptions.setTcpFastOpen(fdAccess.get(fd), value);
     }
@@ -453,7 +450,11 @@ public final class ExtendedSocketOptions {
     }
 
     private static int getTcpkeepAliveProbes(FileDescriptor fd) throws SocketException {
+        return platformSocketOptions.getTcpkeepAliveProbes(fdAccess.get(fd));
+=======
+    private static int getTcpKeepAliveProbes(FileDescriptor fd) throws SocketException {
         return platformSocketOptions.getTcpKeepAliveProbes(fdAccess.get(fd));
+>>>>>>> master
     }
 
     private static boolean getIpDontFragment(FileDescriptor fd, boolean isIPv6) throws SocketException {
@@ -531,10 +532,7 @@ public final class ExtendedSocketOptions {
             return false;
         }
 
-        void setTcpKeepAliveProbes(int fd, final int value) throws SocketException {
-            throw new UnsupportedOperationException("unsupported TCP_KEEPCNT option");
-        }
-
+<<<<<<< HEAD
         boolean tcpFastOpenSupported() {
             return false;
         }
@@ -544,6 +542,9 @@ public final class ExtendedSocketOptions {
         }
 
         void setTcpkeepAliveProbes(int fd, final int value) throws SocketException {
+=======
+        void setTcpKeepAliveProbes(int fd, final int value) throws SocketException {
+>>>>>>> master
             throw new UnsupportedOperationException("unsupported TCP_KEEPCNT option");
         }
 

@@ -59,8 +59,8 @@ class MacOSXSocketOptions extends PlatformSocketOptions {
     }
 
     @Override
-    void setTcpkeepAliveProbes(int fd, final int value) throws SocketException {
-        setTcpkeepAliveProbes0(fd, value);
+    void setTcpKeepAliveProbes(int fd, final int value) throws SocketException {
+        setTcpKeepAliveProbes0(fd, value);
     }
 
     @Override
@@ -118,12 +118,12 @@ class MacOSXSocketOptions extends PlatformSocketOptions {
         setTcpFastOpen0(fd, value);
     }
 
-    private static native void setTcpkeepAliveProbes0(int fd, int value) throws SocketException;
+    private static native void setTcpKeepAliveProbes0(int fd, int value) throws SocketException;
     private static native void setTcpKeepAliveTime0(int fd, int value) throws SocketException;
     private static native void setTcpKeepAliveIntvl0(int fd, int value) throws SocketException;
     private static native void setIpDontFragment0(int fd, boolean value, boolean isIPv6) throws SocketException;
     private static native void setTcpFastOpen0(int fd, int value) throws SocketException;
-    private static native int getTcpkeepAliveProbes0(int fd) throws SocketException;
+    private static native int getTcpKeepAliveProbes0(int fd) throws SocketException;
     private static native int getTcpKeepAliveTime0(int fd) throws SocketException;
     private static native int getTcpKeepAliveIntvl0(int fd) throws SocketException;
     private static native boolean getIpDontFragment0(int fd, boolean isIPv6) throws SocketException;
