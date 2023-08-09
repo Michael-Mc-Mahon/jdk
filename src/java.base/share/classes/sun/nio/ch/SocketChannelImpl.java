@@ -949,7 +949,7 @@ class SocketChannelImpl
         }
         int pos = data.position();
         int lim = data.limit();
-	boolean isBlocking = isBlocking();
+        boolean isBlocking = isBlocking();
         assert (pos <= lim);
         int size = (pos <= lim ? lim - pos : 0);
         int n;

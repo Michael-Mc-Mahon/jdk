@@ -923,8 +923,6 @@ class WindowsAsynchronousSocketChannelImpl
 
     // -- Native methods --
 
-    private static native void initIDs();
-
     private static native int connect0(long socket, boolean preferIPv6,
         InetAddress remote, int remotePort, long overlapped) throws IOException;
 

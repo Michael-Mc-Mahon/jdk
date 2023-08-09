@@ -420,10 +420,6 @@ public final class ExtendedSocketOptions {
         return platformSocketOptions.getQuickAck(fdAccess.get(fd));
     }
 
-    private static int getTcpKeepAliveProbes(FileDescriptor fd) throws SocketException {
-        return platformSocketOptions.getTcpKeepAliveProbes(fdAccess.get(fd));
-    }
-
     private static void setTcpKeepAliveProbes(FileDescriptor fd, int value)
             throws SocketException {
         platformSocketOptions.setTcpKeepAliveProbes(fdAccess.get(fd), value);
@@ -444,16 +440,16 @@ public final class ExtendedSocketOptions {
         platformSocketOptions.setTcpKeepAliveIntvl(fdAccess.get(fd), value);
     }
 
+    private static int getTcpKeepAliveProbes(FileDescriptor fd) throws SocketException {
+        return platformSocketOptions.getTcpKeepAliveProbes(fdAccess.get(fd));
+    }
+
     private static void setTcpFastOpen(FileDescriptor fd, int value) throws SocketException {
         platformSocketOptions.setTcpFastOpen(fdAccess.get(fd), value);
     }
 
     private static void setTcpFastOpenConnectData(FileDescriptor fd, ByteBuffer data) throws SocketException {
         throw new UnsupportedOperationException();
-    }
-
-    private static int getTcpkeepAliveProbes(FileDescriptor fd) throws SocketException {
-        return platformSocketOptions.getTcpKeepAliveProbes(fdAccess.get(fd));
     }
 
     private static boolean getIpDontFragment(FileDescriptor fd, boolean isIPv6) throws SocketException {
@@ -541,10 +537,6 @@ public final class ExtendedSocketOptions {
 
         boolean tcpFastOpenConnectDataSupported() {
             return false;
-        }
-
-        void setTcpkeepAliveProbes(int fd, final int value) throws SocketException {
-            throw new UnsupportedOperationException("unsupported TCP_KEEPCNT option");
         }
 
         void setTcpKeepAliveTime(int fd, final int value) throws SocketException {
