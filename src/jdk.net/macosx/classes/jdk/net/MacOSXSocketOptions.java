@@ -79,8 +79,8 @@ class MacOSXSocketOptions extends PlatformSocketOptions {
     }
 
     @Override
-    int getTcpkeepAliveProbes(int fd) throws SocketException {
-        return getTcpkeepAliveProbes0(fd);
+    int getTcpKeepAliveProbes(int fd) throws SocketException {
+        return getTcpKeepAliveProbes0(fd);
     }
 
     @Override

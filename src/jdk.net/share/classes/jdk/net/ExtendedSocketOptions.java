@@ -350,7 +350,7 @@ public final class ExtendedSocketOptions {
                 if (option == TCP_QUICKACK) {
                     setQuickAckOption(fd, (boolean) value);
                 } else if (option == TCP_KEEPCOUNT) {
-                    setTcpkeepAliveProbes(fd, (Integer) value);
+                    setTcpKeepAliveProbes(fd, (Integer) value);
                 } else if (option == IP_DONTFRAGMENT) {
                     setIpDontFragment(fd, (Boolean) value, isIPv6);
                 } else if (option == TCP_KEEPIDLE) {
@@ -384,7 +384,7 @@ public final class ExtendedSocketOptions {
                 if (option == TCP_QUICKACK) {
                     return getQuickAckOption(fd);
                 } else if (option == TCP_KEEPCOUNT) {
-                    return getTcpkeepAliveProbes(fd);
+                    return getTcpKeepAliveProbes(fd);
                 } else if (option == IP_DONTFRAGMENT) {
                     return getIpDontFragment(fd, isIPv6);
                 } else if (option == TCP_KEEPIDLE) {
@@ -420,9 +420,9 @@ public final class ExtendedSocketOptions {
         return platformSocketOptions.getQuickAck(fdAccess.get(fd));
     }
 
-    private static void setTcpkeepAliveProbes(FileDescriptor fd, int value)
+    private static void setTcpKeepAliveProbes(FileDescriptor fd, int value)
             throws SocketException {
-        platformSocketOptions.setTcpkeepAliveProbes(fdAccess.get(fd), value);
+        platformSocketOptions.setTcpKeepAliveProbes(fdAccess.get(fd), value);
     }
 
     private static void setTcpKeepAliveTime(FileDescriptor fd, int value)
@@ -563,7 +563,7 @@ public final class ExtendedSocketOptions {
             throw new UnsupportedOperationException("unsupported IP_DONTFRAGMENT option");
         }
 
-        int getTcpkeepAliveProbes(int fd) throws SocketException {
+        int getTcpKeepAliveProbes(int fd) throws SocketException {
             throw new UnsupportedOperationException("unsupported TCP_KEEPCNT option");
         }
 
