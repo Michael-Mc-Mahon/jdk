@@ -101,6 +101,11 @@ class WindowsSocketOptions extends PlatformSocketOptions {
         setTcpFastOpen0(fd, value);
     }
 
+    @Override
+    int getTcpFastOpen(int fd) throws SocketException {
+        return getTcpFastOpen0(fd);
+    }
+
     private static native boolean keepAliveOptionsSupported0();
     private static native void setIpDontFragment0(int fd, boolean value, boolean isIPv6) throws SocketException;
     private static native boolean getIpDontFragment0(int fd, boolean isIPv6) throws SocketException;
@@ -111,6 +116,7 @@ class WindowsSocketOptions extends PlatformSocketOptions {
     private static native void setTcpFastOpen0(int fd, int value) throws SocketException;
     private static native void setTcpKeepAliveIntvl0(int fd, int value) throws SocketException;
     private static native int getTcpKeepAliveIntvl0(int fd) throws SocketException;
+    private static native int getTcpFastOpen0(int fd) throws SocketException;
 
     static {
         if (System.getSecurityManager() == null) {

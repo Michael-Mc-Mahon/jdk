@@ -236,3 +236,17 @@ JNIEXPORT void JNICALL Java_jdk_net_WindowsSocketOptions_setTcpFastOpen0
     handleError(env, (jint) rv, "set option TCP_FASTOPEN failed");
 }
 
+/*
+ * Class:     jdk_net_WindowsSocketOptions
+ * Method:    getTcpFastOpen0
+ * Signature: (I)I;
+ */
+JNIEXPORT jint JNICALL Java_jdk_net_WindowsSocketOptions_getTcpFastOpen0
+(JNIEnv *env, jobject unused, jint fd) {
+    jint optval, rv;
+    socklen_t sz = sizeof(optval);
+    rv = getsockopt(fd, IPPROTO_TCP, TCP_FASTOPEN, (char*) &optval, &sz);
+    handleError(env, rv, "get option TCP_FASTOPEN failed");
+    return optval;
+}
+
