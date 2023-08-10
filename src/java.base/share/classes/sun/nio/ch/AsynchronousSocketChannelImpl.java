@@ -39,6 +39,7 @@ import java.util.Objects;
 import java.util.Collections;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.*;
+import java.util.stream.Collectors;
 import sun.net.NetHooks;
 import sun.net.ext.ExtendedSocketOptions;
 
@@ -513,7 +514,9 @@ abstract class AsynchronousSocketChannelImpl
             }
             set.add(StandardSocketOptions.TCP_NODELAY);
             set.addAll(ExtendedSocketOptions.clientSocketOptions());
-            return Collections.unmodifiableSet(set);
+            return set.stream()
+                       .filter(opt -> !opt.name().equals("TCP_FASTOPEN_CONNECT_DATA"))
+                       .collect(Collectors.toUnmodifiableSet());
         }
     }
 

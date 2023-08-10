@@ -391,6 +391,8 @@ public final class ExtendedSocketOptions {
                     return getTcpKeepAliveTime(fd);
                 } else if (option == TCP_KEEPINTERVAL) {
                     return getTcpKeepAliveIntvl(fd);
+                } else if (option == TCP_FASTOPEN) {
+                    return getTcpFastOpen(fd);
                 } else if (option == SO_PEERCRED) {
                     return getSoPeerCred(fd);
                 } else if (option == SO_INCOMING_NAPI_ID) {
@@ -465,7 +467,7 @@ public final class ExtendedSocketOptions {
     }
 
     private static int getTcpFastOpen(FileDescriptor fd) throws SocketException {
-        throw new UnsupportedOperationException();
+        return platformSocketOptions.getTcpFastOpen(fdAccess.get(fd));
     }
 
     private static int getIncomingNapiId(FileDescriptor fd) throws SocketException {
@@ -569,6 +571,10 @@ public final class ExtendedSocketOptions {
 
         int getTcpKeepAliveTime(int fd) throws SocketException {
             throw new UnsupportedOperationException("unsupported TCP_KEEPIDLE option");
+        }
+
+        int getTcpFastOpen(int fd) throws SocketException {
+            throw new UnsupportedOperationException("unsupported TCP_FASTOPEN option");
         }
 
         int getTcpKeepAliveIntvl(int fd) throws SocketException {

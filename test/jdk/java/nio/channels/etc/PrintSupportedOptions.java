@@ -32,10 +32,13 @@
 
 import java.io.IOException;
 import java.net.SocketOption;
+import java.nio.ByteBuffer;
 import java.nio.channels.*;
 import java.util.*;
 
 import jdk.test.lib.net.IPSupport;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class PrintSupportedOptions {
 
@@ -57,13 +60,36 @@ public class PrintSupportedOptions {
 
     static final Set<String> READ_ONLY_OPTS = Set.of("SO_INCOMING_NAPI_ID");
 
+    // key is name of option that can only be written. Value is the value to set
+    // instead of trying to read a value
+    static final Map<String,Object> WRITE_ONLY_OPTS =
+        Map.of("TCP_FASTOPEN_CONNECT_DATA", ByteBuffer.wrap("hello world".getBytes(UTF_8)));
+
+    // Anything to do to channel before test
+
+    static interface PrepFunction<T> {
+        public void run(T t) throws IOException;
+    }
+
+    static final Map<String,PrepFunction<NetworkChannel>> prep =
+        Map.of("TCP_FASTOPEN", (ch) -> ch.bind(null));
+
     @SuppressWarnings("unchecked")
     static <T extends NetworkChannel>
     void test(NetworkChannelSupplier<T> supplier) throws IOException {
         try (T ch = supplier.get()) {
             System.out.println(ch);
             for (SocketOption<?> opt : ch.supportedOptions()) {
-                Object value = ch.getOption(opt);
+                if (prep.containsKey(opt.name())) {
+                    prep.get(opt.name()).run(ch);
+                }
+
+                Object value;
+                if (!WRITE_ONLY_OPTS.containsKey(opt.name())) {
+                    value = ch.getOption(opt);
+                } else {
+                    value = WRITE_ONLY_OPTS.get(opt.name());
+                }
                 System.out.format(" %s -> %s%n", opt.name(), value);
                 if (!READ_ONLY_OPTS.contains(opt.name())) {
                     if (value != null)

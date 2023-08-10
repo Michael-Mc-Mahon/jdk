@@ -27,6 +27,7 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
+#include <stdio.h>
 
 #include <jni.h>
 #include <netinet/tcp.h>
@@ -259,3 +260,18 @@ JNIEXPORT void JNICALL Java_jdk_net_MacOSXSocketOptions_setTcpFastOpen0
     int rv = setsockopt(fd, IPPROTO_TCP, TCP_FASTOPEN, (char*)&arg, sizeof(arg));
     handleError(env, (jint) rv, "set option TCP_FASTOPEN failed");
 }
+
+/*
+ * Class:     jdk_net_MacOSXSocketOptions
+ * Method:    getTcpFastOpen0
+ * Signature: (I)I;
+ */
+JNIEXPORT jint JNICALL Java_jdk_net_MacOSXSocketOptions_getTcpFastOpen0
+(JNIEnv *env, jobject unused, jint fd) {
+    jint optval, rv;
+    socklen_t sz = sizeof (optval);
+    rv = getsockopt(fd, IPPROTO_TCP, TCP_FASTOPEN, &optval, &sz);
+    handleError(env, rv, "get option TCP_FASTOPEN failed");
+    return optval;
+}
+
