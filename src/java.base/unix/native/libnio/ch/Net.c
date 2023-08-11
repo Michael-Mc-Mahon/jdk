@@ -402,7 +402,7 @@ Java_sun_nio_ch_Net_isConnected(JNIEnv *env, jclass clazz, jobject fdo)
     struct sockaddr addr;
     socklen_t len = sizeof(addr);
     int n = getpeername(fdval(env, fdo), &addr, &len);
-    return n == 0 ? 1 : 0;
+    return n == 0 ? 1 : IOS_UNAVAILABLE;
 }
 
 JNIEXPORT jint JNICALL

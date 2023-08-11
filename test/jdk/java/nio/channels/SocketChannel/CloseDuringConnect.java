@@ -26,6 +26,7 @@
  * @library /test/lib
  * @build jdk.test.lib.Utils
  * @run main CloseDuringConnect
+ * @run main CloseDuringConnect fastopen
  * @summary Attempt to cause a deadlock by closing a SocketChannel in one thread
  *     where another thread is closing the channel after a connect fail
  */
@@ -35,6 +36,7 @@ import java.io.UncheckedIOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -44,6 +46,8 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import jdk.test.lib.Utils;
 
+import static jdk.net.ExtendedSocketOptions.TCP_FASTOPEN_CONNECT_DATA;
+
 public class CloseDuringConnect {
 
     // number of test iterations, needs to be 5-10 at least
@@ -51,6 +55,23 @@ public class CloseDuringConnect {
 
     // maximum delay before closing SocketChannel, in milliseconds
     static final int MAX_DELAY_BEFORE_CLOSE = 20;
+
+
+    static final byte[] bb = new byte[] {(byte)'X'};
+
+    static boolean initFastOpen(SocketChannel ch, boolean fastopen) throws IOException {
+        if (!fastopen)
+            return false;
+        if (ch.getLocalAddress() == null)
+            ch.bind(null);
+        try {
+            ch.setOption(TCP_FASTOPEN_CONNECT_DATA, ByteBuffer.wrap(bb));
+        } catch (IOException e) {
+            return false;
+        }
+        return true;
+    }
+
 
     /**
      * Invoked by a task in the thread pool to connect to a remote address.
@@ -89,13 +110,16 @@ public class CloseDuringConnect {
      * @param remote the remote address, does not accept connections
      * @param blocking socket channel blocking mode
      * @param delay the delay, in millis, before closing the channel
+     * @param fastopen use fastopen option
      */
     static void test(ScheduledExecutorService pool,
                      SocketAddress remote,
                      boolean blocking,
-                     long delay) {
+                     long delay,
+                     boolean fastopen) {
         try {
             SocketChannel sc = SocketChannel.open();
+            initFastOpen(sc, fastopen);
             sc.configureBlocking(blocking);
             Future<Void> r1 = pool.submit(() -> connect(sc, remote));
             Future<Void> r2 = pool.schedule(() -> close(sc), delay, MILLISECONDS);
@@ -107,6 +131,7 @@ public class CloseDuringConnect {
     }
 
     public static void main(String[] args) throws Exception {
+        boolean fastopen = args.length > 0 && args[0].equals("fastopen");
         SocketAddress refusing = Utils.refusingEndpoint();
         ScheduledExecutorService pool = Executors.newScheduledThreadPool(2);
         try {
@@ -116,8 +141,8 @@ public class CloseDuringConnect {
                 // Execute the test for varying delays up to MAX_DELAY_BEFORE_CLOSE,
                 // for socket channels configured both blocking and non-blocking
                 IntStream.range(0, MAX_DELAY_BEFORE_CLOSE).forEach(delay -> {
-                    test(pool, refusing, /*blocking mode*/true, delay);
-                    test(pool, refusing, /*blocking mode*/false, delay);
+                    test(pool, refusing, /*blocking mode*/true, delay, fastopen);
+                    test(pool, refusing, /*blocking mode*/false, delay, fastopen);
                 });
             });
         } finally {

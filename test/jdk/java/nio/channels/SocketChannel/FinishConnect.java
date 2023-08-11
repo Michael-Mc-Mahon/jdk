@@ -26,8 +26,10 @@
  * @library .. /test/lib
  * @build jdk.test.lib.Utils TestServers
  * @run main FinishConnect
+ * @run main FinishConnect fastopen
  */
 
+import java.io.IOException;
 import java.net.*;
 import java.nio.*;
 import java.nio.channels.*;
@@ -35,29 +37,50 @@ import java.nio.channels.spi.SelectorProvider;
 import java.nio.charset.*;
 import java.util.*;
 
+import static jdk.net.ExtendedSocketOptions.TCP_FASTOPEN_CONNECT_DATA;
+
 
 public class FinishConnect {
 
+
+    static final byte[] bb = new byte[] {(byte)'X'};
+
+    static boolean initFastOpen(SocketChannel ch, boolean fastopen) throws IOException {
+        if (!fastopen)
+            return false;
+        if (ch.getLocalAddress() == null)
+            ch.bind(null);
+        try {
+            ch.setOption(TCP_FASTOPEN_CONNECT_DATA, ByteBuffer.wrap(bb));
+        } catch (IOException e) {
+            return false;
+        }
+        return true;
+    }
+
     public static void main(String[] args) throws Exception {
+        boolean fastopen = args.length > 0 && args[0].equals("fastopen");
         try (TestServers.DayTimeServer dayTimeServer
                 = TestServers.DayTimeServer.startNewServer(100)) {
-            test1(dayTimeServer, true, true);
-            test1(dayTimeServer, true, false);
-            test1(dayTimeServer, false, true);
-            test1(dayTimeServer, false, false);
-            test2(dayTimeServer);
+            test1(dayTimeServer, true, true, fastopen);
+            test1(dayTimeServer, true, false, fastopen);
+            test1(dayTimeServer, false, true, fastopen);
+            test1(dayTimeServer, false, false, fastopen);
+            test2(dayTimeServer, fastopen);
         }
     }
 
     static void test1(TestServers.DayTimeServer daytimeServer,
                       boolean select,
-                      boolean setBlocking)
+                      boolean setBlocking,
+                      boolean fastopen)
         throws Exception
     {
         InetSocketAddress isa
             = new InetSocketAddress(daytimeServer.getAddress(),
                                     daytimeServer.getPort());
         SocketChannel sc = SocketChannel.open();
+        initFastOpen(sc, fastopen);
         sc.configureBlocking(false);
         boolean connected = sc.connect(isa);
         int attempts = 0;
@@ -115,7 +138,7 @@ public class FinishConnect {
         sc.close();
     }
 
-    static void test2(TestServers.DayTimeServer daytimeServer) throws Exception {
+    static void test2(TestServers.DayTimeServer daytimeServer, boolean fastopen) throws Exception {
         InetSocketAddress isa
             = new InetSocketAddress(daytimeServer.getAddress(),
                                     daytimeServer.getPort());
@@ -137,6 +160,7 @@ public class FinishConnect {
                 throw new RuntimeException("Failed to connect");
             }
             SocketChannel sc = SocketChannel.open();
+            initFastOpen(sc, fastopen);
             sc.configureBlocking(false);
             boolean connected = sc.connect(isa);
             int localAttempts = 0;

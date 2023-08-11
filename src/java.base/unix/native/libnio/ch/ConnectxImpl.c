@@ -53,6 +53,12 @@
   #define MSG_FASTOPEN 0x20000000
 #endif
 
+#define RESTARTABLE(_cmd, _result) do { \
+  do { \
+    _result = _cmd; \
+  } while((_result == -1) && (errno == EINTR)); \
+} while(0)
+
 #define FOR_TEST_ONLY
 
 #ifdef FOR_TEST_ONLY
@@ -101,7 +107,8 @@ Java_sun_nio_ch_ConnectxImpl_startConnect0(JNIEnv *env, jclass clazz, jboolean p
 
     // TBD - what if sendto is interrupted (EINTR), is initial data lost?
 
-    ssize_t n = (int) sendto(fdval(env, fdo), buf, len, MSG_FASTOPEN, &sa.sa, sa_len);
+    ssize_t n;
+    RESTARTABLE(sendto(fdval(env, fdo), buf, len, MSG_FASTOPEN, &sa.sa, sa_len), n);
     if (n < 0) {
         if (errno == EMSGSIZE) {
             JNU_ThrowIOException(env, "TFO data too large");
@@ -136,7 +143,8 @@ Java_sun_nio_ch_ConnectxImpl_startConnect0(JNIEnv *env, jclass clazz, jboolean p
 
     // TBD - what if connectx is interrupted (EINTR), is nsent set?
 
-    int n = connectx(fdval(env, fdo), &endpoints, 0, CONNECT_DATA_IDEMPOTENT, &iov, 1, &nsent, NULL);
+    int n;
+    RESTARTABLE(connectx(fdval(env, fdo), &endpoints, 0, CONNECT_DATA_IDEMPOTENT, &iov, 1, &nsent, NULL),n);
     if (n < 0) {
         if (errno == EMSGSIZE) {
             JNU_ThrowIOException(env, "TFO data too large");

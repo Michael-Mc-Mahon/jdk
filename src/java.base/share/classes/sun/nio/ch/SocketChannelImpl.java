@@ -962,7 +962,7 @@ class SocketChannelImpl
                 int orig = data.position();
                 bb.put(data);
                 bb.flip();
-                n = Net.connectx(family, fd, remote, isBlocking(), ((DirectBuffer) bb).address(), size);
+                n = Net.connectx(family, fd, remote, isBlocking, ((DirectBuffer) bb).address(), size);
                 if (n < size) {
                     // adjust position of data: only n bytes written
                     data.position(orig+n);

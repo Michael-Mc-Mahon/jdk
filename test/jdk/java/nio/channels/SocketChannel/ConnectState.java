@@ -26,6 +26,7 @@
  * @library .. /test/lib
  * @build jdk.test.lib.Utils TestServers
  * @run main ConnectState
+ * @run main ConnectState fastopen
  */
 
 import java.io.*;
@@ -36,6 +37,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import static jdk.net.ExtendedSocketOptions.TCP_FASTOPEN_CONNECT_DATA;
 
 
 public class ConnectState {
@@ -64,6 +66,21 @@ public class ConnectState {
             exceptions = new HashSet<>(Arrays.asList(expected));
         }
         return exceptions;
+    }
+
+    static final byte[] bb = new byte[] {(byte)'X'};
+
+    static boolean initFastOpen(SocketChannel ch, boolean fastopen) throws IOException {
+        if (!fastopen)
+            return false;
+        if (ch.getLocalAddress() == null)
+            ch.bind(null);
+        try {
+            ch.setOption(TCP_FASTOPEN_CONNECT_DATA, ByteBuffer.wrap(bb));
+        } catch (IOException e) {
+            return false;
+        }
+        return true;
     }
 
     static abstract class Test {
@@ -105,8 +122,8 @@ public class ConnectState {
             }
         }
 
-        Test(String name, Class<?> exception, int state) throws Exception {
-            this(name, expectedExceptions(exception), state);
+        Test(String name, Class<?> exception, int state, boolean fastopen) throws Exception {
+            this(name, expectedExceptions(exception), state, fastopen);
         }
 
         // On some architecture we may need to accept several exceptions.
@@ -116,9 +133,10 @@ public class ConnectState {
         // non-blocking socket. We may instead get an
         // AlreadyConnectedException, which is also valid: it simply means
         // that the first connection has been immediately accepted.
-        Test(String name, Collection<Class<?>> exceptions, int state)
+        Test(String name, Collection<Class<?>> exceptions, int state, boolean fastopen)
                 throws Exception {
             SocketChannel sc = SocketChannel.open();
+            initFastOpen(sc, fastopen);
             String note;
             try {
                 try {
@@ -167,11 +185,11 @@ public class ConnectState {
 
     }
 
-    static void tests() throws Exception {
+    static void tests(boolean fastopen) throws Exception {
         log.println(remote);
 
         new Test("Read unconnected", NotYetConnectedException.class,
-                 ST_UNCONNECTED) {
+                 ST_UNCONNECTED, fastopen) {
                 @Override
                 String go(SocketChannel sc) throws Exception {
                     ByteBuffer b = ByteBuffer.allocateDirect(1024);
@@ -180,7 +198,7 @@ public class ConnectState {
                 }};
 
         new Test("Write unconnected", NotYetConnectedException.class,
-                 ST_UNCONNECTED) {
+                 ST_UNCONNECTED, fastopen) {
                 @Override
                 String go(SocketChannel sc) throws Exception {
                     ByteBuffer b = ByteBuffer.allocateDirect(1024);
@@ -188,14 +206,14 @@ public class ConnectState {
                     return null;
                 }};
 
-        new Test("Simple connect", NONE, ST_CONNECTED) {
+        new Test("Simple connect", NONE, ST_CONNECTED, fastopen) {
                 @Override
                 String go(SocketChannel sc) throws Exception {
                     sc.connect(remote);
                     return null;
                 }};
 
-        new Test("Simple connect & finish", NONE, ST_CONNECTED) {
+        new Test("Simple connect & finish", NONE, ST_CONNECTED, fastopen) {
                 @Override
                 String go(SocketChannel sc) throws Exception {
                     sc.connect(remote);
@@ -205,7 +223,7 @@ public class ConnectState {
                 }};
 
         new Test("Double connect",
-                 AlreadyConnectedException.class, ST_CONNECTED) {
+                 AlreadyConnectedException.class, ST_CONNECTED, fastopen) {
                 @Override
                 String go(SocketChannel sc) throws Exception {
                     sc.connect(remote);
@@ -214,7 +232,7 @@ public class ConnectState {
                 }};
 
         new Test("Finish w/o start",
-                 NoConnectionPendingException.class, ST_UNCONNECTED) {
+                 NoConnectionPendingException.class, ST_UNCONNECTED, fastopen) {
                 @Override
                 String go(SocketChannel sc) throws Exception {
                     sc.finishConnect();
@@ -223,7 +241,7 @@ public class ConnectState {
 
         // Note: using our local EchoServer rather than echo on a distant
         //       host - we see that Tries to finish = 0 (instead of ~ 18).
-        new Test("NB simple connect", NONE, ST_CONNECTED) {
+        new Test("NB simple connect", NONE, ST_CONNECTED, fastopen) {
                 @Override
                 String go(SocketChannel sc) throws Exception {
                     sc.configureBlocking(false);
@@ -244,7 +262,7 @@ public class ConnectState {
         new Test("NB double connect",
                  expectedExceptions(ConnectionPendingException.class,
                                     AlreadyConnectedException.class),
-                 ST_PENDING_OR_CONNECTED) {
+                 ST_PENDING_OR_CONNECTED, fastopen) {
                 @Override
                 String go(SocketChannel sc) throws Exception {
                     sc.configureBlocking(false);
@@ -254,7 +272,7 @@ public class ConnectState {
                 }};
 
         new Test("NB finish w/o start",
-                 NoConnectionPendingException.class, ST_UNCONNECTED) {
+                 NoConnectionPendingException.class, ST_UNCONNECTED, fastopen) {
                 @Override
                 String go(SocketChannel sc) throws Exception {
                     sc.configureBlocking(false);
@@ -262,7 +280,7 @@ public class ConnectState {
                     return null;
                 }};
 
-        new Test("NB connect, B finish", NONE, ST_CONNECTED) {
+        new Test("NB connect, B finish", NONE, ST_CONNECTED, fastopen) {
                 @Override
                 String go(SocketChannel sc) throws Exception {
                     sc.configureBlocking(false);
@@ -275,11 +293,12 @@ public class ConnectState {
     }
 
     public static void main(String[] args) throws Exception {
+        boolean fastopen = args.length > 0 && args[0].equals("fastopen");
         try (TestServers.EchoServer echoServer
                 = TestServers.EchoServer.startNewServer(500)) {
             remote = new InetSocketAddress(echoServer.getAddress(),
                                            echoServer.getPort());
-            tests();
+            tests(fastopen);
         }
     }
 

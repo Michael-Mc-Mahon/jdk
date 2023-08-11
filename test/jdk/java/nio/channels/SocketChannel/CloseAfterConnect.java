@@ -23,20 +23,52 @@
 
 /* @test
  * @bug 6380091
+ * @run main CloseAfterConnect
+ * @run main CloseAfterConnect fastopen
  */
+import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.ServerSocketChannel;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.io.IOException;
+import static jdk.net.ExtendedSocketOptions.TCP_FASTOPEN;
+import static jdk.net.ExtendedSocketOptions.TCP_FASTOPEN_CONNECT_DATA;
 
 public class CloseAfterConnect {
+
+    static final byte[] bb = new byte[] {(byte)'X'};
+
+    static boolean initFastOpen(SocketChannel ch,
+                                ServerSocketChannel ssc, boolean fastopen) throws IOException {
+        if (!fastopen)
+            return false;
+        if (ch.getLocalAddress() == null)
+            ch.bind(null);
+        try {
+            ch.setOption(TCP_FASTOPEN_CONNECT_DATA, ByteBuffer.wrap(bb));
+        } catch (IOException e) {
+            return false;
+        }
+        try {
+            ssc.setOption(TCP_FASTOPEN, 2);
+        } catch (IOException e) {
+            return false;
+        }
+        return true;
+    }
+
     public static void main(String[] args) throws Exception {
+        boolean fastopen = args.length > 0 && args[0].equals("fastopen");
+        System.out.println("fastopen = " + fastopen);
+
         ServerSocketChannel ssc = ServerSocketChannel.open();
         ssc.socket().bind(new InetSocketAddress(0));
 
         InetAddress lh = InetAddress.getLocalHost();
         final SocketChannel sc = SocketChannel.open();
+        fastopen = initFastOpen(sc, ssc, fastopen);
+
         final InetSocketAddress isa =
             new InetSocketAddress(lh, ssc.socket().getLocalPort());
 

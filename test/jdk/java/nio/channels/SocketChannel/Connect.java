@@ -27,37 +27,57 @@
  * @library .. /test/lib
  * @build jdk.test.lib.Utils TestServers
  * @run main Connect
+ * @run main Connect fastopen
  */
 
+import java.io.IOException;
 import java.net.*;
 import java.nio.*;
 import java.nio.channels.*;
 import java.util.*;
+import static jdk.net.ExtendedSocketOptions.TCP_FASTOPEN_CONNECT_DATA;
 
 public class Connect {
 
     private static final long INCREMENTAL_DELAY = 30L * 1000L;
 
     public static void main(String args[]) throws Exception {
+        boolean fastopen = args.length > 0 && args[0].equals("fastopen");
         try (TestServers.EchoServer echoServer
                 = TestServers.EchoServer.startNewServer(1000)) {
-            test1(echoServer);
+            test1(echoServer, fastopen);
         }
         try {
-            test1(TestServers.RefusingServer.newRefusingServer());
+            test1(TestServers.RefusingServer.newRefusingServer(), fastopen);
             throw new Exception("Refused connection throws no exception");
         } catch (ConnectException ce) {
             // Correct result
         }
     }
 
-    static void test1(TestServers.AbstractServer server) throws Exception {
+    static final byte[] bb = new byte[] {(byte)'X'};
+
+    static boolean initFastOpen(SocketChannel ch, boolean fastopen) throws IOException {
+        if (!fastopen)
+            return false;
+        if (ch.getLocalAddress() == null)
+            ch.bind(null);
+        try {
+            ch.setOption(TCP_FASTOPEN_CONNECT_DATA, ByteBuffer.wrap(bb));
+        } catch (IOException e) {
+            return false;
+        }
+        return true;
+    }
+
+    static void test1(TestServers.AbstractServer server, boolean fastopen) throws Exception {
         Selector selector;
         SocketChannel sc;
         SelectionKey sk;
         InetSocketAddress isa = new InetSocketAddress(
             server.getAddress(), server.getPort());
         sc = SocketChannel.open();
+        fastopen = initFastOpen(sc, fastopen);
         sc.configureBlocking(false);
 
         selector = Selector.open();

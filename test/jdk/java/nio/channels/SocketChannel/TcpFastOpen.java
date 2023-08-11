@@ -47,7 +47,7 @@ import jdk.net.ExtendedSocketOptions;
 public class TcpFastOpen {
 
     public static void main(String[] args) throws Exception {
-	testFastOpenConnectData();
+        testFastOpenConnectData();
     }
 
     /**
@@ -61,12 +61,27 @@ public class TcpFastOpen {
             listener.bind(new InetSocketAddress(lb, 5789));
             listener.setOption(TCP_FASTOPEN, 1);
 
-            doTest(listener, true);
-            doTest(listener, false);
+            doTest(listener, true, false);
+            doTest(listener, false, false);
+            doTest(listener, true, true);
+            doTest(listener, false, true);
         }
     }
 
-    static void doTest(ServerSocketChannel listener, boolean block) throws IOException, InterruptedException {
+    static ByteBuffer getBuffer(boolean direct, int size) {
+        return direct ? ByteBuffer.allocateDirect(size)
+                                : ByteBuffer.allocate(size);
+    }
+
+    static ByteBuffer getBuffer(boolean direct, String s) {
+        ByteBuffer buf = direct ? ByteBuffer.allocateDirect(s.length())
+                                : ByteBuffer.allocate(s.length());
+        buf.put(s.getBytes(UTF_8));
+        buf.flip();
+        return buf;
+    }
+
+    static void doTest(ServerSocketChannel listener, boolean block, boolean direct) throws IOException, InterruptedException {
             SocketChannel sc = SocketChannel.open();
             sc.bind(null);
             sc.configureBlocking(block);
@@ -74,31 +89,26 @@ public class TcpFastOpen {
             String part1 = new StringBuilder().repeat("X", 50).toString();
             String part2 = "+greetings";
 
-            ByteBuffer data = ByteBuffer.wrap(part1.getBytes(UTF_8));
-            //sc.setOption(TCP_FASTOPEN, 1);
+            ByteBuffer data = getBuffer(direct, part1);
             sc.setOption(TCP_FASTOPEN_CONNECT_DATA, data);
             sc.connect(listener.getLocalAddress());
-            //System.out.printf("get TCP_FASTOPEN %d\n", sc.getOption(TCP_FASTOPEN));
 
-	    if (!sc.isBlocking()) {
-	        Selector sel = Selector.open();
-	        sc.register(sel, SelectionKey.OP_CONNECT, null);
-	        int t = sel.select();
-	    }
-            //Thread.sleep(Duration.ofSeconds(2));
+            if (!sc.isBlocking()) {
+                Selector sel = Selector.open();
+                sc.register(sel, SelectionKey.OP_CONNECT, null);
+                int t = sel.select();
+            }
             sc.finishConnect();
-            //ByteBuffer remaining = sc.getOption(TCP_FASTOPEN_CONNECT_DATA);
             ByteBuffer remaining = data;
-	    System.out.printf("returned BB = %s\n", remaining);
             while (remaining.remaining() > 0) {
                 sc.write(remaining);
             }
-            ByteBuffer message = ByteBuffer.wrap(part2.getBytes(UTF_8));
+            ByteBuffer message = getBuffer(direct, part2);
             sc.write(message);
 
             String expected = part1 + part2;
 
-            ByteBuffer buf = ByteBuffer.allocateDirect(1000000);
+            ByteBuffer buf = getBuffer(direct, 1000000);
             int nread = 0;
             try (SocketChannel peer = listener.accept()) {
                 while (nread < expected.length()) {
@@ -115,13 +125,13 @@ public class TcpFastOpen {
     }
 
     static void assertTrue(boolean b) {
-	if (!b)
-		throw new RuntimeException();
+        if (!b)
+                throw new RuntimeException();
     }
 
     static void assertEquals(Object o1, Object o2) {
-	if (!o1.equals(o2)) {
-		throw new RuntimeException("");
-	}
+        if (!o1.equals(o2)) {
+                throw new RuntimeException("");
+        }
     }
 }
