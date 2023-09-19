@@ -57,7 +57,7 @@ public class Util {
     private static final long MAX_CACHED_BUFFER_SIZE = getMaxCachedBufferSize();
 
     // Per-carrier-thread cache of temporary direct buffers
-    private static TerminatingThreadLocal<BufferCache> bufferCache = new TerminatingThreadLocal<>() {
+    private static final TerminatingThreadLocal<BufferCache> bufferCache = new TerminatingThreadLocal<>() {
         @Override
         protected BufferCache initialValue() {
             return new BufferCache();
@@ -116,7 +116,7 @@ public class Util {
      */
     private static class BufferCache {
         // the array of buffers
-        private ByteBuffer[] buffers;
+        private final ByteBuffer[] buffers;
 
         // the number of buffers in the cache
         private int count;
@@ -382,7 +382,7 @@ public class Util {
 
     // -- Unsafe access --
 
-    private static Unsafe unsafe = Unsafe.getUnsafe();
+    private static final Unsafe unsafe = Unsafe.getUnsafe();
 
     private static byte _get(long a) {
         return unsafe.getByte(a);
