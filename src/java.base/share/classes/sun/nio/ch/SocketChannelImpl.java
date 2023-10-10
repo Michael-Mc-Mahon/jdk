@@ -474,7 +474,6 @@ class SocketChannelImpl
 
     // TODO: second read variant
 
-    @Override
     public long implRead(ByteBuffer[] dsts, int offset, int length)
         throws IOException
     {
@@ -625,7 +624,6 @@ class SocketChannelImpl
 
     // TODO: implement multi version of write
 
-    @Override
     public long implWrite(ByteBuffer[] srcs, int offset, int length)
         throws IOException
     {
