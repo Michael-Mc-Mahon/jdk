@@ -523,6 +523,38 @@ jint handleAppend(FD fd, const void *buf, jint len) {
     return writeInternal(fd, buf, len, JNI_TRUE);
 }
 
+// If either of stdout or stderr are closed, the
+// relevant handle below is redirected to hNull which
+// equivalent to /dev/null. The handles are never closed
+// so cannot be recycled.
+
+static HANDLE hNull = NULL;
+
+static HANDLE hStdout = NULL;
+static HANDLE hStderr = NULL;
+
+
+static void initHandles() {
+     hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
+     hStderr = GetStdHandle(STD_ERROR_HANDLE);
+     hNull = CreateFile("NUL", GENERIC_WRITE, 0, NULL, OPEN_EXISTING,
+                               FILE_ATTRIBUTE_NORMAL, NULL );
+}
+
+
+static int stdOutOrStdErrFD(HANDLE h) {
+    if (hNull == NULL)
+       initHandles();
+
+    if (h == hStdout)
+       return 1;
+    else if (h == hStderr)
+       return 2;
+    else
+       return -1;
+}
+
+
 // Function to close the fd held by this FileDescriptor and set fd to -1.
 void
 fileDescriptorClose(JNIEnv *env, jobject this)
@@ -537,6 +569,32 @@ fileDescriptorClose(JNIEnv *env, jobject this)
         return;
     }
 
+    int fileDesc = stdOutOrStdErrFD(h);
+
+    if (fileDesc == 1 || fileDesc == 2) {
+        DWORD stdHandleID = fileDesc == 1 ? STD_OUTPUT_HANDLE : STD_ERROR_HANDLE;
+        if (SetStdHandle(stdHandleID, hNull) == 0) {
+            JNU_ThrowIOExceptionWithLastError(env, "close failed");
+            return;
+        }
+        // One of STDOUT, STDERR. So redirect the handle
+        // amd related file descriptor to a NULL file (equivalent of /dev/null)
+        int fdx = _open_osfhandle((intptr_t)hNull, O_WRONLY | O_TEXT);
+        if (fdx == -1) {
+            JNU_ThrowIOException(env, "close failed (_open_osfhandle)");
+            return;
+        }
+        if (_dup2(fdx, fileDesc) == -1) {
+            JNU_ThrowIOException(env, "close failed (_dup2)");
+            return;
+        }
+        _close(fdx);
+    } else {
+        if (CloseHandle(h) == 0) { /* Returns zero on failure */
+            JNU_ThrowIOExceptionWithLastError(env, "close failed");
+        }
+    }
+
     /* Set the fd to -1 before closing it so that the timing window
      * of other threads using the wrong fd (closed but recycled fd,
      * that gets re-opened with some other filename) is reduced.
@@ -546,10 +604,6 @@ fileDescriptorClose(JNIEnv *env, jobject this)
     (*env)->SetLongField(env, this, IO_handle_fdID, -1);
     if ((*env)->ExceptionCheck(env)) {
         return;
-    }
-
-    if (CloseHandle(h) == 0) { /* Returns zero on failure */
-        JNU_ThrowIOExceptionWithLastError(env, "close failed");
     }
 }
 
