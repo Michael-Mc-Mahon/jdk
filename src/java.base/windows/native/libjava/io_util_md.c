@@ -528,6 +528,10 @@ jint handleAppend(FD fd, const void *buf, jint len) {
 // equivalent to /dev/null. The handles are never closed
 // so cannot be recycled.
 
+// For Posix APIs
+#define STDOUT_FD 1
+#define STDERR_FD 2
+
 static HANDLE hNull = NULL;
 
 static HANDLE hStdout = NULL;
@@ -547,9 +551,9 @@ static int stdOutOrStdErrFD(HANDLE h) {
        initHandles();
 
     if (h == hStdout)
-       return 1;
+       return STDOUT_FD;
     else if (h == hStderr)
-       return 2;
+       return STDERR_FD;
     else
        return -1;
 }
@@ -571,8 +575,8 @@ fileDescriptorClose(JNIEnv *env, jobject this)
 
     int fileDesc = stdOutOrStdErrFD(h);
 
-    if (fileDesc == 1 || fileDesc == 2) {
-        DWORD stdHandleID = fileDesc == 1 ? STD_OUTPUT_HANDLE : STD_ERROR_HANDLE;
+    if (fileDesc == STD_OUT || fileDesc == STD_ERR) {
+        DWORD stdHandleID = fileDesc == STD_OUT ? STD_OUTPUT_HANDLE : STD_ERROR_HANDLE;
         if (SetStdHandle(stdHandleID, hNull) == 0) {
             JNU_ThrowIOExceptionWithLastError(env, "close failed");
             return;
