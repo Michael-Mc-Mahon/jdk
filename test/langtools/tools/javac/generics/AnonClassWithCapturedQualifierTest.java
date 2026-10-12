@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -19,21 +19,28 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- *
  */
 
-#ifndef SHARE_GC_SHARED_BARRIERSETRUNTIME_HPP
-#define SHARE_GC_SHARED_BARRIERSETRUNTIME_HPP
+/*
+ * @test
+ * @bug 8392555
+ * @summary Error when compiling annonymous class creation with captured qualifier.
+ * @compile AnonClassWithCapturedQualifierTest.java
+ */
 
-#include "memory/allocation.hpp"
-#include "oops/valueKlass.hpp"
-#include "utilities/globalDefinitions.hpp"
+import java.util.function.Consumer;
 
-class BarrierSetRuntime: public AllStatic {
-public:
-  // Template interpreter...
-  static void value_copy(address src, address dst, ValueFieldInfo* vfi);
-  static void value_copy_is_dest_uninitialized(address src, address dst, ValueFieldInfo* vfi);
-};
+public class AnonClassWithCapturedQualifierTest {
 
-#endif // SHARE_GC_SHARED_BARRIERSETRUNTIME_HPP
+    class Inner {}
+
+    interface A<T extends AnonClassWithCapturedQualifierTest> {
+        void update(Consumer<T> action);
+    }
+
+    static void test(A<?> a) {
+        a.update(it -> {
+            Object x = it.new Inner() {};
+        });
+    }
+}
