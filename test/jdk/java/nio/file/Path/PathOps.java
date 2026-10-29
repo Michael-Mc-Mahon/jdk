@@ -1512,11 +1512,36 @@ public class PathOps {
         test("C:\\foo ")                // trailing space
              .invalid();
         test("C:\\foo \\bar")
-            .invalid();
-        //test("C:\\foo.")              // trailing dot
-            //.invalid();
-        //test("C:\\foo...\\bar")
-            //.invalid();
+             .invalid();
+
+        // trailing dots
+
+        test("C:\\foo.")
+                .invalid();
+        test("C:\\foo...\\bar")
+                .invalid();
+        test("\\\\host\\share\\foo.")
+                .invalid();
+        test("\\\\host\\share.\\foo")
+                .invalid();
+        test("\\\\host\\share\\foo\\bar.")
+                .invalid();
+        test("\\\\host\\share\\foo")
+                .string("\\\\host\\share\\foo");
+        test("\\foo.")
+                .invalid();
+        test("foo.")
+                .invalid();
+        test("\\foo\\...\\bar")
+                .invalid();
+
+        // exceptions to trailing dots "." and ".."
+
+        test("\\foo\\.\\bar")
+                .string("\\foo\\.\\bar");
+        test("\\foo\\..\\bar")
+                .string("\\foo\\..\\bar");
+
 
         // normalization at construction time (remove redundant and replace slashes)
         test("C:/a/b/c")
