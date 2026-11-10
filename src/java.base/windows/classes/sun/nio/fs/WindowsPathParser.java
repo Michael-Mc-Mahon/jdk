@@ -46,6 +46,11 @@ class WindowsPathParser {
         return parse(input, true);
     }
 
+    //public  static void main(String[] args) {
+        //Result parse = parse("C:\\...df\\\\foo.bar.\\");
+        //System.out.println(parse.path);
+    //}
+
     /**
      * Parses the given input as a Windows path where it is known that the
      * path is already normalized.
@@ -99,7 +104,10 @@ class WindowsPathParser {
                 next = nextSlash(input, off, len);
                 if (off == next)
                     throw new InvalidPathException(input, "UNC path is missing sharename");
-                root = "\\\\" + host + "\\" + input.substring(off, next) + "\\";
+                var share = input.substring(off, next);
+                if (share.endsWith(".")) // . or .. not valid here
+                    throw new InvalidPathException(input, "Invalid UNC sharename");
+                root = "\\\\" + host + "\\" + share + "\\";
                 off = next;
             } else {
                 if (isLetter(c0) && c1 == ':') {
@@ -148,6 +156,19 @@ class WindowsPathParser {
         }
     }
 
+    private static boolean invalidDot(char currC, char lastC, int segmentLen) {
+        assert segmentLen > 0;
+        if (currC != '.')
+            return false; // valid: Not a .
+        if (segmentLen == 1) {
+            return false; // valid: . on its own
+        }
+        if (segmentLen == 2) {
+            return lastC != '.'; // valid: .. on its own
+        }
+        return true;
+    }
+
     /**
      * Remove redundant slashes from the rest of the path, forcing all slashes
      * into the preferred slash.
@@ -158,7 +179,7 @@ class WindowsPathParser {
         int pathLen = path.length();
 
         // the result array will initally contain the characters of root in
-        // the first rootLen elements followed by the chanacters of path from
+        // the first rootLen elements followed by the characters of path from
         // position index pathOff to the end of path
         char[] result = new char[rootLen + pathLen - pathOff];
         root.getChars(0, rootLen, result, 0);
@@ -175,13 +196,16 @@ class WindowsPathParser {
         int pathPos = srcPos;
 
         char lastC = 0;
+        char prevC = 0;
+        int segmentLen = 0;
+
         while (pathPos < result.length) {
             char c = result[pathPos];
             if (isSlash(c)) {
-                if (lastC == ' ')
+                if (lastC == ' ' || invalidDot(lastC, prevC, segmentLen))
                     throw new InvalidPathException(path,
-                                                   "Trailing char <" + lastC + ">",
-                                                   pathPos - 1);
+                            "Trailing char <" + lastC + ">",
+                            pathPos - 1);
                 int nchars = pathPos - srcPos;
                 System.arraycopy(result, srcPos, result, dstPos, nchars);
                 dstPos += nchars;
@@ -189,20 +213,23 @@ class WindowsPathParser {
                 if (pathPos != result.length)   //no slash at the end of normalized path
                     result[dstPos++] = '\\';
                 srcPos = pathPos;
+                segmentLen = 0;
             } else {
                 if (isInvalidPathChar(c))
                     throw new InvalidPathException(path,
-                                                   "Illegal char <" + c + ">",
-                                                   pathPos);
+                            "Illegal char <" + c + ">",
+                            pathPos);
+                prevC = lastC;
                 lastC = c;
                 pathPos++;
+                segmentLen++;
             }
         }
         if (srcPos != pathPos) {
-            if (lastC == ' ')
+            if (lastC == ' ' || invalidDot(lastC, prevC, segmentLen))
                 throw new InvalidPathException(path,
-                                               "Trailing char <" + lastC + ">",
-                                               pathPos - 1);
+                        "Trailing char <" + lastC + ">",
+                        pathPos - 1);
             int nchars = pathPos - srcPos;
             System.arraycopy(result, srcPos, result, dstPos, nchars);
             dstPos += nchars;
@@ -229,8 +256,8 @@ class WindowsPathParser {
         while (off < end && !isSlash(c=path.charAt(off))) {
             if (isInvalidPathChar(c))
                 throw new InvalidPathException(path,
-                                               "Illegal character [" + c + "] in path",
-                                               off);
+                        "Illegal character [" + c + "] in path",
+                        off);
             off++;
         }
         return off;
@@ -241,8 +268,8 @@ class WindowsPathParser {
         while (off < end && !isSlash(c=path[off])) {
             if (isInvalidPathChar(c))
                 throw new InvalidPathException(new String(path),
-                                               "Illegal character [" + c + "] in path",
-                                               off);
+                        "Illegal character [" + c + "] in path",
+                        off);
             off++;
         }
         return off;

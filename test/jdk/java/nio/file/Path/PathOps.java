@@ -30,7 +30,7 @@
  * @run main PathOps
  */
 
-import java.io.File;
+import java.io.*;
 import java.nio.file.FileSystems;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
@@ -165,6 +165,15 @@ public class PathOps {
 
     PathOps makeAbsolute() {
         this.path = path.toAbsolutePath();
+        return this;
+    }
+
+    PathOps makeRealPath() {
+        try {
+            this.path = path.toRealPath();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
         return this;
     }
 
@@ -1512,11 +1521,36 @@ public class PathOps {
         test("C:\\foo ")                // trailing space
              .invalid();
         test("C:\\foo \\bar")
-            .invalid();
-        //test("C:\\foo.")              // trailing dot
-            //.invalid();
-        //test("C:\\foo...\\bar")
-            //.invalid();
+             .invalid();
+
+        // trailing dots
+
+        test("C:\\boo.")
+                .invalid();
+        test("C:\\boo...\\bar")
+                .invalid();
+        test("\\\\host\\share\\boo.")
+                .invalid();
+        test("\\\\host\\share.\\boo")
+                .invalid();
+        test("\\\\host\\share\\boo\\bar.")
+                .invalid();
+        test("\\\\host\\share\\boo")
+                .string("\\\\host\\share\\boo");
+        test("\\boo.")
+                .invalid();
+        test("boo.")
+                .invalid();
+        test("\\boo\\...\\bar")
+                .invalid();
+
+        // exceptions to trailing dots "." and ".."
+
+        test("\\boo\\.\\bar")
+                .string("\\boo\\.\\bar");
+        test("\\boo\\..\\bar")
+                .string("\\boo\\..\\bar");
+
 
         // normalization at construction time (remove redundant and replace slashes)
         test("C:/a/b/c")
