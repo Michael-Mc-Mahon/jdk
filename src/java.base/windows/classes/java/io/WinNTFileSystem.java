@@ -363,15 +363,24 @@ final class WinNTFileSystem extends FileSystem {
                 || (pl == 3));
     }
 
-    private boolean isInvalidDot(char lastC, char prevC, int segmentLen) {
+    // Illegal characters at end of path segment
+    private static final char DOT = '.';
+    private static final char SP = ' ';
+
+    /**
+     * Assumes the current char is a slash, then checks if the last char
+     * is illegal ('.' or ' ') except if the entire segment is "." or ".."
+     * prevC is the previous character to lastC
+     */
+    private boolean isInvalidSeq(char lastC, char prevC, int segmentLen) {
         assert segmentLen > 0;
-        if (lastC != '.')
-            return false; // valid: Not a .
-        if (segmentLen == 1) {
+        if (lastC != DOT && lastC != SP)
+            return false; // valid: Not a . or SP
+        if (lastC == DOT && segmentLen == 1) {
             return false; // valid: . on its own
         }
         if (segmentLen == 2) {
-            return prevC != '.'; // valid: .. on its own
+            return !(lastC == DOT && prevC == DOT); // valid: .. on its own
         }
         return true;
     }
@@ -391,7 +400,7 @@ final class WinNTFileSystem extends FileSystem {
             if (currC == 0)
                 return true;
             if (isSlash(currC)) {
-                if (lastC == ' ' || isInvalidDot(lastC, prevC, segLen))
+                if (lastC == ' ' || isInvalidSeq(lastC, prevC, segLen))
                     return true;
                 prevC = lastC = 0;
                 segLen = 0;
@@ -402,7 +411,7 @@ final class WinNTFileSystem extends FileSystem {
             }
         }
         currC = pathString.charAt(lenm);
-        if (currC == ' ' || isInvalidDot(currC, lastC, segLen))
+        if (currC == ' ' || isInvalidSeq(currC, lastC, segLen))
             return true;
         return false;
     }
