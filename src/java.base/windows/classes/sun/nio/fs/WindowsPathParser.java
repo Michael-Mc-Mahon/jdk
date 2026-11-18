@@ -46,11 +46,6 @@ class WindowsPathParser {
         return parse(input, true);
     }
 
-    //public  static void main(String[] args) {
-        //Result parse = parse("C:\\...df\\\\foo.bar.\\");
-        //System.out.println(parse.path);
-    //}
-
     /**
      * Parses the given input as a Windows path where it is known that the
      * path is already normalized.
@@ -156,15 +151,15 @@ class WindowsPathParser {
         }
     }
 
-    private static boolean invalidDot(char currC, char lastC, int segmentLen) {
+    private static boolean invalidDot(char lastC, char prevC, int segmentLen) {
         assert segmentLen > 0;
-        if (currC != '.')
+        if (lastC != '.')
             return false; // valid: Not a .
         if (segmentLen == 1) {
             return false; // valid: . on its own
         }
         if (segmentLen == 2) {
-            return lastC != '.'; // valid: .. on its own
+            return prevC != '.'; // valid: .. on its own
         }
         return true;
     }

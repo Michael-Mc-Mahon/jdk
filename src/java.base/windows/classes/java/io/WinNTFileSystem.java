@@ -363,14 +363,58 @@ final class WinNTFileSystem extends FileSystem {
                 || (pl == 3));
     }
 
+    private boolean isInvalidDot(char lastC, char prevC, int segmentLen) {
+        assert segmentLen > 0;
+        if (lastC != '.')
+            return false; // valid: Not a .
+        if (segmentLen == 1) {
+            return false; // valid: . on its own
+        }
+        if (segmentLen == 2) {
+            return prevC != '.'; // valid: .. on its own
+        }
+        return true;
+    }
+
+    /**
+     * Returns true if any segment of the given path string
+     * ends with an invalid charsequence
+     */
+    private final boolean hasInvalidChars(String pathString) {
+        int lenm = pathString.length() - 1;
+        if (lenm < 0)
+            return false;
+        char currC=0, lastC = 0, prevC = 0;
+        int segLen = 0;
+        for (int i=0; i<lenm; i++) {
+            currC = pathString.charAt(i);
+            if (currC == 0)
+                return true;
+            if (isSlash(currC)) {
+                if (lastC == ' ' || isInvalidDot(lastC, prevC, segLen))
+                    return true;
+                prevC = lastC = 0;
+                segLen = 0;
+            } else {
+                prevC = lastC;
+                lastC = currC;
+                segLen++;
+            }
+        }
+        currC = pathString.charAt(lenm);
+        if (currC == ' ' || isInvalidDot(currC, lastC, segLen))
+            return true;
+        return false;
+    }
+
     @Override
     public boolean isInvalid(File f) {
         final String pathname = f.getPath();
 
         // Invalid if the pathname string contains a null character or if
         // any name in the pathname's name sequence ends with a space
-        if (pathname.indexOf('\u0000') >= 0 || pathname.endsWith(" ")
-            || pathname.contains(" \\"))
+        // or a dot (except whole segments == "." or ".." )
+        if (hasInvalidChars(pathname))
             return true;
 
         // The remaining checks are irrelevant for alternate data streams (ADS)
@@ -484,6 +528,8 @@ final class WinNTFileSystem extends FileSystem {
         }
         return canonicalize0(path);
     }
+
+    public native void print(String path);
 
     private native String canonicalize0(String path)
             throws IOException;

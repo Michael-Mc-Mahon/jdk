@@ -61,6 +61,8 @@ abstract class FileSystem {
      */
     public abstract char getPathSeparator();
 
+    public abstract void print(String s);
+
     /**
      * Convert the given pathname string to normal form.  If the string is
      * already in normal form then it is simply returned.

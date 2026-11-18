@@ -37,6 +37,8 @@ final class UnixFileSystem extends FileSystem {
         return path.isEmpty() ? getCWD().getPath() : path;
     }
 
+    public void print(String s) {}
+
     private File getFileForSysCalls(File file) {
         return file.getPath().isEmpty() ? getCWD() : file;
     }

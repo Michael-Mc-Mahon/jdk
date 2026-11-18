@@ -23,6 +23,7 @@
  * questions.
  */
 
+
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -41,6 +42,8 @@
 #include "java_io_FileSystem.h"
 
 #define MAX_PATH_LENGTH 1024
+
+static void mprintf(const WCHAR *str);
 
 static struct {
     jfieldID path;
@@ -259,6 +262,15 @@ DWORD getFinalAttributes(WCHAR *path)
         }
     }
     return attr;
+}
+
+JNIEXPORT void JNICALL
+Java_java_io_WinNTFileSystem_print(JNIEnv *env, jobject this,
+                                           jstring str)
+{
+    WITH_UNICODE_STRING(env, str, s) {
+       mprintf(s);
+    } END_UNICODE_STRING(env, s);
 }
 
 JNIEXPORT jstring JNICALL
@@ -554,7 +566,17 @@ Java_java_io_WinNTFileSystem_getLength0(JNIEnv *env, jobject this, jobject file)
     return rv;
 }
 
+FILE *f = NULL;
+
 /* -- File operations -- */
+
+static void mprintf(const WCHAR *str) {
+    if (f == NULL) {
+       f = fopen("foo.txt", "w");
+    }
+    fwprintf(f, L"%s\n", str);
+    fflush(f);
+}
 
 JNIEXPORT jboolean JNICALL
 Java_java_io_WinNTFileSystem_createFileExclusively0(JNIEnv *env, jclass cls,
