@@ -151,19 +151,6 @@ class WindowsPathParser {
         }
     }
 
-    private static boolean invalidDot(char lastC, char prevC, int segmentLen) {
-        assert segmentLen > 0;
-        if (lastC != '.')
-            return false; // valid: Not a .
-        if (segmentLen == 1) {
-            return false; // valid: . on its own
-        }
-        if (segmentLen == 2) {
-            return prevC != '.'; // valid: .. on its own
-        }
-        return true;
-    }
-
     /**
      * Remove redundant slashes from the rest of the path, forcing all slashes
      * into the preferred slash.
@@ -197,7 +184,7 @@ class WindowsPathParser {
         while (pathPos < result.length) {
             char c = result[pathPos];
             if (isSlash(c)) {
-                if (lastC == ' ' || invalidDot(lastC, prevC, segmentLen))
+                if (ParseUtil.isInvalidSeq(lastC, prevC, segmentLen))
                     throw new InvalidPathException(path,
                             "Trailing char <" + lastC + ">",
                             pathPos - 1);
@@ -221,7 +208,7 @@ class WindowsPathParser {
             }
         }
         if (srcPos != pathPos) {
-            if (lastC == ' ' || invalidDot(lastC, prevC, segmentLen))
+            if (ParseUtil.isInvalidSeq(lastC, prevC, segmentLen))
                 throw new InvalidPathException(path,
                         "Trailing char <" + lastC + ">",
                         pathPos - 1);

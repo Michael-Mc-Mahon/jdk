@@ -30,6 +30,7 @@ import java.nio.file.Path;
 import java.util.BitSet;
 import java.util.Locale;
 import java.util.Properties;
+import sun.nio.fs.ParseUtil;
 
 /**
  * Unicode-aware FileSystem for Windows NT/2000.
@@ -363,28 +364,6 @@ final class WinNTFileSystem extends FileSystem {
                 || (pl == 3));
     }
 
-    // Illegal characters at end of path segment
-    private static final char DOT = '.';
-    private static final char SP = ' ';
-
-    /**
-     * Assumes the current char is a slash, then checks if the last char
-     * is illegal ('.' or ' ') except if the entire segment is "." or ".."
-     * prevC is the previous character to lastC
-     */
-    private boolean isInvalidSeq(char lastC, char prevC, int segmentLen) {
-        assert segmentLen > 0;
-        if (lastC != DOT && lastC != SP)
-            return false; // valid: Not a . or SP
-        if (lastC == DOT && segmentLen == 1) {
-            return false; // valid: . on its own
-        }
-        if (segmentLen == 2) {
-            return !(lastC == DOT && prevC == DOT); // valid: .. on its own
-        }
-        return true;
-    }
-
     /**
      * Returns true if any segment of the given path string
      * ends with an invalid charsequence
@@ -400,7 +379,7 @@ final class WinNTFileSystem extends FileSystem {
             if (currC == 0)
                 return true;
             if (isSlash(currC)) {
-                if (lastC == ' ' || isInvalidSeq(lastC, prevC, segLen))
+                if (ParseUtil.isInvalidSeq(lastC, prevC, segLen))
                     return true;
                 prevC = lastC = 0;
                 segLen = 0;
@@ -411,7 +390,7 @@ final class WinNTFileSystem extends FileSystem {
             }
         }
         currC = pathString.charAt(lenm);
-        if (currC == ' ' || isInvalidSeq(currC, lastC, segLen))
+        if (ParseUtil.isInvalidSeq(currC, lastC, segLen))
             return true;
         return false;
     }
