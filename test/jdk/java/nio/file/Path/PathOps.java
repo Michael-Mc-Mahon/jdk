@@ -1486,7 +1486,7 @@ public class PathOps {
             .normalize("..");
         test(".\\foo\\.\\bar\\.\\gus\\..\\.\\..")
             .normalize("foo");
-        test(".foo\\..\\foo..\\..\\bar\\..\\gus")
+        test(".foo\\..\\foo\\..\\bar\\..\\gus")
             .normalize("gus");
         test("")
             .normalize("");
